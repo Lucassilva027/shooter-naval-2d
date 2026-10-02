@@ -163,6 +163,12 @@ Fonte: https://github.com/junglegaming/game-developer-challenge
 | 2026-10-02 | SVG/SWF movidos para `assets-src/vector` (fora do deploy) | ~3 MB não usados em runtime |
 | 2026-10-02 | TypeScript 6: `@types/web` no lugar da lib `dom` | recomendação da skill oficial do PixiJS |
 
+| 2026-10-02 | Game loop com passo fixo 1/60 s + acumulador + limite de delta | determinismo para testes com seed |
+| 2026-10-02 | Movimento com inércia: W/↑ acelera, S/↓ freia gradualmente (mesma curva da aceleração) | sensação de barco |
+| 2026-10-02 | Teclas: W/↑ avançar, S/↓ frear, A/D ou ←/→ girar, Espaço frontal, Q/E laterais, P/Esc pausa | — |
+| 2026-10-02 | Sprites escolhidos por cor (jogador, Chaser, Shooter distintos) | — |
+| 2026-10-02 | Tamanho do mundo definido pela tela ao iniciar a partida (com limites mín./máx.) e fixo durante ela; resize só muda a escala | atende "resize sem alterar regras" |
+
 Versões: React 19.3, PixiJS 8.22, TypeScript 6.0, Vite 8.3, TanStack Query 5.104, Axios 1.20, MSW 2.15, Playwright 1.63, Vitest 5.0.
 
 ## Perguntas em aberto
