@@ -78,8 +78,12 @@ docs/
 - [x] Testes: 14 unitários (Vitest) + 2 E2E (falha/nova tentativa de assets, 5 ciclos sem vazar canvas)
 
 #### 3. Colisões
-- [ ] Limites da arena
-- [ ] Ilhas (círculos/polígonos) bloqueando navios e projéteis
+- [x] Limites da arena (considerando o casco inteiro e a orientação)
+- [x] 3 ilhas em layout fixo proporcional (grama, areia, rocha), colisão por união de círculos
+- [x] Casco do navio como 3 círculos (proa, meio, popa); deslizamento pela costa sem "grudar"
+- [x] `separateShips` pronto para inimigos (empurrão simétrico)
+- [x] Debug visual dos círculos com `?colliders` na URL
+- [ ] Projéteis × ilhas (fase 4)
 
 #### 4. Disparos
 - [ ] Frontal (1 projétil) e lateral (3 paralelos, esquerda e direita)
@@ -175,6 +179,10 @@ Fonte: https://github.com/junglegaming/game-developer-challenge
 
 | 2026-10-02 | Playwright no Windows usa GPU (`--use-angle=d3d11`), 2 workers, timeout 60 s | WebGL por software deixava cada ação ~6× mais lenta e estourava timeouts |
 | 2026-10-02 | Navios: jogador azul (`ship_5`), Chaser vermelho (`ship_3`), Shooter preto (`ship_2`); dano = +6, +12, +18 no índice | layout do atlas |
+
+| 2026-10-02 | Ilhas: layout fixo, 3 ilhas, união de círculos (quadrado arredondado = 1 central + 4 cantos) | arte quadrada; círculo único deixava os cantos de fora |
+| 2026-10-02 | Navio: 3 círculos ao longo do casco (config `player.hull`) | casco alongado; círculo único deixava proa/popa atravessarem |
+| 2026-10-02 | Perda de velocidade no impacto = teto `maxSpeed × (1 − componente frontal)` | multiplicar por passo fazia o navio travar ao deslizar |
 
 Versões: React 19.3, PixiJS 8.22, TypeScript 6.0, Vite 8.3, TanStack Query 5.104, Axios 1.20, MSW 2.15, Playwright 1.63, Vitest 5.0.
 

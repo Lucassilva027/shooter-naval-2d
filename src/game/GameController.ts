@@ -67,7 +67,9 @@ export class GameController {
         config.world,
       );
       this.simulation = new GameSimulation(config, arena);
-      this.renderer = new GameRenderer(app, textures, this.simulation);
+      this.renderer = new GameRenderer(app, textures, this.simulation, {
+        showColliders: new URLSearchParams(window.location.search).has('colliders'),
+      });
 
       this.keyboard.attach();
       this.keyboard.setEnabled(true);

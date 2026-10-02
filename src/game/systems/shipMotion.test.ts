@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ShipMotionConfig } from '@/config/gameConfig';
 import { createShip } from '../entities/ship';
-import { confineToArena, stepShipMotion, type MotionControls } from './shipMotion';
+import { stepShipMotion, type MotionControls } from './shipMotion';
 
 const MOTION: ShipMotionConfig = {
   maxSpeed: 200,
@@ -15,7 +15,14 @@ const IDLE: MotionControls = { throttle: false, brake: false, turn: 0 };
 const THROTTLE: MotionControls = { throttle: true, brake: false, turn: 0 };
 
 function newShip() {
-  return createShip({ x: 500, y: 500, rotation: 0, maxHealth: 100, radius: 20 });
+  return createShip({
+    x: 500,
+    y: 500,
+    rotation: 0,
+    maxHealth: 100,
+    maxSpeed: 200,
+    hull: [{ offset: 0, radius: 20 }],
+  });
 }
 
 function run(ship: ReturnType<typeof newShip>, controls: MotionControls, seconds: number) {
@@ -60,16 +67,5 @@ describe('stepShipMotion', () => {
     expect(ship.rotation).toBeCloseTo(Math.PI / 2);
     run(ship, { ...IDLE, turn: -1 }, 1);
     expect(ship.rotation).toBeCloseTo(-Math.PI / 2);
-  });
-});
-
-describe('confineToArena', () => {
-  it('keeps the whole hull inside the arena', () => {
-    const ship = newShip();
-    ship.x = -50;
-    ship.y = 2000;
-    expect(confineToArena(ship, { width: 1000, height: 800 })).toBe(true);
-    expect(ship.x).toBe(20);
-    expect(ship.y).toBe(780);
   });
 });

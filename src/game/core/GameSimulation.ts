@@ -1,8 +1,12 @@
 import type { GameConfig } from '@/config/gameConfig';
 import type { InputSnapshot } from '../input/actions';
+import { placeIslands, type Island } from '../entities/island';
 import { createShip, rememberPreviousState, type Ship } from '../entities/ship';
-import { confineToArena, stepShipMotion, type MotionControls } from '../systems/shipMotion';
+import { confineToArena, resolveShipVsIsland } from '../systems/collision';
+import { stepShipMotion, type MotionControls } from '../systems/shipMotion';
 import type { Size } from './worldSize';
+
+const STATIC_RESOLVE_PASSES = 3;
 
 /**
  * Owns all continuous match state and advances it by fixed steps. Has no knowledge of
@@ -10,26 +14,38 @@ import type { Size } from './worldSize';
  */
 export class GameSimulation {
   readonly player: Ship;
+  readonly islands: readonly Island[];
   elapsedSeconds = 0;
 
   constructor(
     readonly config: GameConfig,
     readonly arena: Size,
   ) {
+    this.islands = placeIslands(config.arena.islands, arena);
     this.player = createShip({
-      x: arena.width / 2,
-      y: arena.height / 2,
+      x: config.arena.playerSpawn.x * arena.width,
+      y: config.arena.playerSpawn.y * arena.height,
       rotation: 0,
       maxHealth: config.player.maxHealth,
-      radius: config.player.radius,
+      maxSpeed: config.player.motion.maxSpeed,
+      hull: config.player.hull,
     });
   }
 
   step(dt: number, input: InputSnapshot): void {
     rememberPreviousState(this.player);
     stepShipMotion(this.player, toMotionControls(input), this.config.player.motion, dt);
-    confineToArena(this.player, this.arena);
+    this.resolveStaticCollisions(this.player);
     this.elapsedSeconds += dt;
+  }
+
+  /** Pushing out of one collider can nudge the hull into a neighbour, so resolve a few times. */
+  private resolveStaticCollisions(ship: Ship): void {
+    for (let pass = 0; pass < STATIC_RESOLVE_PASSES; pass++) {
+      let hit = confineToArena(ship, this.arena);
+      for (const island of this.islands) hit = resolveShipVsIsland(ship, island) || hit;
+      if (!hit) return;
+    }
   }
 }
 

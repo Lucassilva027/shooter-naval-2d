@@ -25,6 +25,23 @@ export interface WorldConfig {
   readonly maxHeight: number;
 }
 
+export type IslandArt = 'sandIsland' | 'grassIsland' | 'rock';
+
+export interface IslandPreset {
+  readonly art: IslandArt;
+  /** Centre as a fraction of the arena size (0-1), so the layout scales with the world. */
+  readonly x: number;
+  readonly y: number;
+  /** Half of the island's visible extent in world units; colliders scale with it. */
+  readonly radius: number;
+}
+
+export interface ArenaConfig {
+  readonly islands: readonly IslandPreset[];
+  /** Player spawn as a fraction of the arena size; must stay clear of every island. */
+  readonly playerSpawn: { readonly x: number; readonly y: number };
+}
+
 export interface ShipMotionConfig {
   readonly maxSpeed: number;
   /** Speed gained per second while the throttle is held. */
@@ -36,16 +53,23 @@ export interface ShipMotionConfig {
   readonly turnSpeed: number;
 }
 
+/** A collision circle centred on the ship's bow-stern axis (positive offset = towards the bow). */
+export interface HullCircle {
+  readonly offset: number;
+  readonly radius: number;
+}
+
 export interface PlayerConfig {
   readonly maxHealth: number;
-  /** Collision radius. */
-  readonly radius: number;
+  /** Circles approximating the elongated hull, used for every collision test. */
+  readonly hull: readonly HullCircle[];
   readonly motion: ShipMotionConfig;
 }
 
 export interface GameConfig {
   readonly simulation: SimulationConfig;
   readonly world: WorldConfig;
+  readonly arena: ArenaConfig;
   readonly player: PlayerConfig;
 }
 
@@ -60,9 +84,21 @@ export const defaultGameConfig: GameConfig = {
     maxWidth: 1920,
     maxHeight: 1080,
   },
+  arena: {
+    islands: [
+      { art: 'grassIsland', x: 0.24, y: 0.32, radius: 105 },
+      { art: 'sandIsland', x: 0.74, y: 0.7, radius: 80 },
+      { art: 'rock', x: 0.66, y: 0.24, radius: 34 },
+    ],
+    playerSpawn: { x: 0.5, y: 0.5 },
+  },
   player: {
     maxHealth: 100,
-    radius: 28,
+    hull: [
+      { offset: 30, radius: 22 },
+      { offset: 0, radius: 27 },
+      { offset: -30, radius: 22 },
+    ],
     motion: {
       maxSpeed: 220,
       acceleration: 160,

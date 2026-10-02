@@ -1,6 +1,5 @@
 import type { ShipMotionConfig } from '@/config/gameConfig';
-import type { Size } from '../core/worldSize';
-import { clamp, wrapAngle } from '../core/math';
+import { wrapAngle } from '../core/math';
 import type { Ship } from '../entities/ship';
 
 export interface MotionControls {
@@ -28,14 +27,4 @@ export function stepShipMotion(
   ship.rotation = wrapAngle(ship.rotation + controls.turn * motion.turnSpeed * dt);
   ship.x += Math.cos(ship.rotation) * ship.speed * dt;
   ship.y += Math.sin(ship.rotation) * ship.speed * dt;
-}
-
-/** Keeps the whole hull inside the arena. Returns true when the ship hit an edge. */
-export function confineToArena(ship: Ship, arena: Size): boolean {
-  const x = clamp(ship.x, ship.radius, arena.width - ship.radius);
-  const y = clamp(ship.y, ship.radius, arena.height - ship.radius);
-  const hit = x !== ship.x || y !== ship.y;
-  ship.x = x;
-  ship.y = y;
-  return hit;
 }
