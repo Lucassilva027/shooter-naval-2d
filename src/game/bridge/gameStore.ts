@@ -4,19 +4,37 @@
  * the rate of meaningful UI changes (e.g. once per displayed second), never per frame.
  */
 
-export type GamePhase = 'loading' | 'running' | 'error';
+import type { MatchOutcome } from '../core/events';
+
+/** `ending` is the short outro between the end of play and the result screen. */
+export type GamePhase = 'loading' | 'running' | 'ending' | 'error';
 
 export interface GameUiState {
   readonly phase: GamePhase;
   /** Asset loading progress, 0-100 (integer). */
   readonly loadProgress: number;
   readonly errorMessage: string | null;
+  readonly health: number;
+  readonly maxHealth: number;
+  readonly score: number;
+  /** Whole seconds left, rounded up (shows the full duration at the start). */
+  readonly timeLeft: number;
+  readonly lowTime: boolean;
+  readonly lowHealth: boolean;
+  readonly outcome: MatchOutcome | null;
 }
 
 export const INITIAL_GAME_UI_STATE: GameUiState = {
   phase: 'loading',
   loadProgress: 0,
   errorMessage: null,
+  health: 0,
+  maxHealth: 0,
+  score: 0,
+  timeLeft: 0,
+  lowTime: false,
+  lowHealth: false,
+  outcome: null,
 };
 
 export interface GameStore {

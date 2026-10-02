@@ -155,7 +155,19 @@ export interface EnemiesConfig {
   readonly shooter: ShooterConfig;
 }
 
+export interface MatchRulesConfig {
+  /** Match length; exposed in Options as "Match duration". */
+  readonly durationSeconds: number;
+  /** Real seconds the final scene plays (sinking ship / "Time's up!") before the result. */
+  readonly outroSeconds: number;
+  /** The timer turns into a warning (red, pulsing, ticking) at this many seconds left. */
+  readonly lowTimeSeconds: number;
+  /** Health at or below this fraction of max counts as "low" (warning sound, announcement). */
+  readonly lowHealthRatio: number;
+}
+
 export interface GameConfig {
+  readonly match: MatchRulesConfig;
   readonly simulation: SimulationConfig;
   readonly world: WorldConfig;
   readonly arena: ArenaConfig;
@@ -176,6 +188,12 @@ const SHIP_HULL: readonly HullCircle[] = [
 ];
 
 export const defaultGameConfig: GameConfig = {
+  match: {
+    durationSeconds: OPTION_LIMITS.matchDurationSeconds.default,
+    outroSeconds: 1.5,
+    lowTimeSeconds: 10,
+    lowHealthRatio: 0.25,
+  },
   simulation: {
     fixedStepSeconds: 1 / 60,
     maxFrameSeconds: 0.25,

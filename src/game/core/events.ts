@@ -2,6 +2,8 @@ import type { EnemyKind } from '@/config/gameConfig';
 import type { Faction } from '../entities/projectile';
 
 export type WeaponKind = 'front' | 'broadside';
+/** Why a match ended: the timer ran out, or the player's ship was sunk. */
+export type MatchOutcome = 'timeout' | 'destroyed';
 export type ImpactSurface = 'water' | 'island' | 'ship';
 
 /**
@@ -24,6 +26,10 @@ export type GameEvent =
       readonly y: number;
       /** Ship that was hit, when `surface` is 'ship'. */
       readonly shipId?: number;
+    }
+  | {
+      readonly type: 'matchEnded';
+      readonly outcome: MatchOutcome;
     }
   | {
       readonly type: 'enemySpawned';

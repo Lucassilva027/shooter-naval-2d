@@ -19,6 +19,10 @@ export function playEventSounds(events: readonly GameEvent[]): void {
         break;
       case 'shipDestroyed':
         audio.playOneOf(['explosion1', 'explosion2'], 0.9);
+        if (event.kind === undefined) audio.play('shipSinking', 0.9);
+        break;
+      case 'matchEnded':
+        audio.play(event.outcome === 'timeout' ? 'gameComplete' : 'gameOver', 0.9);
         break;
       case 'enemySpawned':
         break;

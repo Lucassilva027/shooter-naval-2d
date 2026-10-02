@@ -11,6 +11,12 @@ const SOUND_FILES = {
   woodHit2: 'ship_wood_hit_2',
   explosion1: 'ship_explosion_1',
   explosion2: 'ship_explosion_2',
+  shipSinking: 'ship_sinking',
+  gameStart: 'game_start',
+  gameOver: 'game_over',
+  gameComplete: 'game_complete',
+  timeWarning: 'time_warning',
+  healthLow: 'health_low',
   oceanLoop: 'ocean_ambience_loop',
 } as const;
 

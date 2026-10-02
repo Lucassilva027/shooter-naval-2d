@@ -110,7 +110,13 @@ docs/
 
 #### 6. HUD
 
-- [ ] Vida, pontos, tempo (semântico, `aria-live` com moderação)
+- [x] Vida (barra `role=meter` + número) à esquerda, tempo (`role=timer`) no centro, pontos à direita
+- [x] `aria-live` só para marcos: 30 s, 10 s, vida baixa (≤25%) e fim de partida
+- [x] Últimos 10 s: tempo vermelho pulsando + `time_warning` a cada segundo; `health_low` ao cair para ≤25%
+- [x] Regras: 120 s padrão (`match.durationSeconds`), fim por tempo ou morte, pontuação congelada no fim
+- [x] Encerramento de 1,5 s (banner + navio afundando), depois `onFinish(MatchResult)` com snapshot do config e seed
+- [x] Tela de resultado provisória (a definitiva fica na fase 7)
+- [x] 5 testes novos de regras de partida (57 no total)
 - [x] Health bars sobre navios, deterioração visual (feito na fase 5)
 
 #### 7. Telas principais
@@ -215,6 +221,10 @@ Fonte: https://github.com/junglegaming/game-developer-challenge
 | 2026-10-02 | Máximo 10 inimigos vivos; spawn espera vaga | performance e legibilidade |
 | 2026-10-02 | Chaser 40 HP, 170 u/s, 25 de dano no impacto; Shooter 60 HP, 120 u/s, alcance 380, 10 de dano a cada 1,6 s, para a 80% do alcance | proposta aceita |
 | 2026-10-02 | Toda aleatoriedade da simulação vem de `createRandom(seed)` (mulberry32) | partidas reproduzíveis em testes |
+
+| 2026-10-02 | Duração padrão 120 s; fim congela a simulação e a pontuação na hora; 1,5 s de encerramento antes do resultado | proposta aceita |
+| 2026-10-02 | HUD: vida à esquerda, tempo no centro, pontos à direita junto dos botões; barra sobre o navio do jogador mantida | proposta aceita |
+| 2026-10-02 | Aviso de tempo nos últimos 10 s (visual + som); leitor de tela só recebe marcos | `aria-live` com moderação |
 
 Versões: React 19.3, PixiJS 8.22, TypeScript 6.0, Vite 8.3, TanStack Query 5.104, Axios 1.20, MSW 2.15, Playwright 1.63, Vitest 5.0.
 

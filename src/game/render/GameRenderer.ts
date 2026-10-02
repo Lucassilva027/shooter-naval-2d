@@ -94,6 +94,8 @@ export class GameRenderer {
         case 'shipDestroyed':
           this.sinkShip(event);
           break;
+        case 'matchEnded':
+          break;
       }
     }
   }
@@ -203,6 +205,8 @@ export class GameRenderer {
     if (view) {
       this.enemyViews.delete(event.shipId);
       view.destroy();
+    } else if (event.shipId === this.simulation.player.id) {
+      this.playerView.container.visible = false;
     }
 
     const skin = event.kind ?? 'player';

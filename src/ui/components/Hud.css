@@ -1,0 +1,77 @@
+.hud__health,
+.hud__timer,
+.hud__score {
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgb(8 24 36 / 80%);
+  font-weight: 700;
+}
+
+.hud__label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #c9bfa6;
+}
+
+.hud__health {
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hud__bar {
+  width: clamp(90px, 14vw, 180px);
+  height: 12px;
+  border: 1px solid #f4ecd8;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgb(0 0 0 / 50%);
+}
+
+.hud__bar-fill {
+  height: 100%;
+  background: #4cd964;
+  transition: width 150ms ease-out;
+}
+
+.hud__health[data-low] .hud__bar-fill {
+  background: #ff4d4d;
+}
+
+.hud__value {
+  min-width: 2.5ch;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud__timer {
+  font-size: 1.4rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud__timer[data-low] {
+  color: #ff5c5c;
+  animation: hud-pulse 1s ease-in-out infinite;
+}
+
+.hud__score .hud__value {
+  font-size: 1.2rem;
+  color: #ffd166;
+}
+
+@keyframes hud-pulse {
+  50% {
+    transform: scale(1.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud__timer[data-low] {
+    animation: none;
+  }
+
+  .hud__bar-fill {
+    transition: none;
+  }
+}

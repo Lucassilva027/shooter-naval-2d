@@ -16,7 +16,8 @@ test.describe('asset loading', () => {
 
     await expect(page.getByRole('alert')).toHaveCount(0);
     await expect(page.locator('canvas')).toHaveCount(1);
-    await expect(page.getByRole('status')).toHaveCount(0);
+    await expect(page.getByText(/Loading assets/)).toHaveCount(0);
+    await expect(page.getByRole('timer')).toHaveText(/^[12]:\d\d$/);
   });
 
   test('mounts a single canvas across repeated enter/exit cycles', async ({ page }) => {

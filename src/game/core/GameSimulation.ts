@@ -21,12 +21,14 @@ import {
   tickCooldown,
   type ShotRequest,
 } from '../systems/weapons';
-import type { GameEvent } from './events';
+import type { GameEvent, MatchOutcome } from './events';
 import { createRandom, type Random } from './random';
 import type { Size } from './worldSize';
 
 const STATIC_RESOLVE_PASSES = 3;
 const PLAYER_ID = 0;
+/** Absorbs floating-point drift from summing thousands of fixed steps. */
+const TIME_EPSILON = 1e-6;
 
 /**
  * Owns all continuous match state and advances it by fixed steps. Has no knowledge of
@@ -41,6 +43,8 @@ export class GameSimulation {
   /** Enemies sunk by the player's cannons. */
   score = 0;
   elapsedSeconds = 0;
+  /** Set once the match ends; from then on `step` is a no-op and the score is final. */
+  outcome: MatchOutcome | null = null;
 
   private readonly random: Random;
   private readonly events: GameEvent[] = [];
@@ -90,7 +94,13 @@ export class GameSimulation {
     };
   }
 
+  get remainingSeconds(): number {
+    return Math.max(0, this.config.match.durationSeconds - this.elapsedSeconds);
+  }
+
   step(dt: number, input: InputSnapshot): void {
+    if (this.outcome) return;
+
     rememberPreviousState(this.player);
     for (const enemy of this.enemies) rememberPreviousState(enemy);
 
@@ -98,17 +108,42 @@ export class GameSimulation {
     for (const enemy of this.enemies) this.steerEnemy(enemy, dt);
 
     this.resolveShipContacts();
+    if (this.endIfPlayerSunk('collision')) return;
     this.resolveStaticCollisions(this.player);
     for (const enemy of this.enemies) this.resolveStaticCollisions(enemy);
 
     stepProjectiles(this.projectiles, this.projectileWorld, dt, this.events);
     this.removeSunkEnemies();
+    if (this.endIfPlayerSunk('enemy')) return;
 
     this.firePlayerWeapons(input, dt);
     this.fireEnemyWeapons(dt);
     this.spawnEnemies(dt);
 
     this.elapsedSeconds += dt;
+    if (this.remainingSeconds <= TIME_EPSILON) {
+      this.elapsedSeconds = this.config.match.durationSeconds;
+      this.end('timeout');
+    }
+  }
+
+  private endIfPlayerSunk(cause: 'enemy' | 'collision'): boolean {
+    if (this.player.health > 0) return false;
+    this.events.push({
+      type: 'shipDestroyed',
+      shipId: this.player.id,
+      x: this.player.x,
+      y: this.player.y,
+      rotation: this.player.rotation,
+      cause,
+    });
+    this.end('destroyed');
+    return true;
+  }
+
+  private end(outcome: MatchOutcome): void {
+    this.outcome = outcome;
+    this.events.push({ type: 'matchEnded', outcome });
   }
 
   /** Returns and clears the events recorded since the previous call. */

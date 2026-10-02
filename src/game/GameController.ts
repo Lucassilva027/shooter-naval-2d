@@ -4,12 +4,14 @@ import { loadGameTextures } from './assets/gameAssets';
 import { audio } from './audio/AudioManager';
 import { playEventSounds } from './audio/gameSounds';
 import type { GameStore } from './bridge/gameStore';
+import type { MatchOutcome } from './core/events';
 import { FixedStepLoop } from './core/FixedStepLoop';
 import { GameSimulation } from './core/GameSimulation';
 import { randomSeed } from './core/random';
 import { resolveWorldSize } from './core/worldSize';
 import type { InputCommand } from './input/actions';
 import { KeyboardInput } from './input/KeyboardInput';
+import type { MatchResult } from './matchResult';
 import { GameRenderer } from './render/GameRenderer';
 
 /** `?seed=123` reproduces a match exactly (used by tests); otherwise every match differs. */
@@ -22,6 +24,8 @@ export interface GameControllerOptions {
   readonly host: HTMLElement;
   readonly config: GameConfig;
   readonly store: GameStore;
+  /** Called once, after the outro, when the match is over. Never called if destroyed first. */
+  readonly onFinish: (result: MatchResult) => void;
 }
 
 /**
@@ -36,6 +40,9 @@ export class GameController {
   private simulation: GameSimulation | null = null;
   private readonly loop: FixedStepLoop;
   private readonly keyboard: KeyboardInput;
+  /** Real seconds left in the outro; null while the match is still being played. */
+  private outroRemaining: number | null = null;
+  private finished = false;
 
   constructor(private readonly options: GameControllerOptions) {
     const { simulation } = options.config;
@@ -85,6 +92,8 @@ export class GameController {
       this.keyboard.setEnabled(true);
       app.ticker.add(this.tick);
       audio.startLoop('oceanLoop', 0.25);
+      audio.play('gameStart', 0.7);
+      this.publishHud(this.simulation);
       store.publish({ phase: 'running', loadProgress: 100 });
     } catch (error) {
       if (this.destroyed) return;
@@ -117,7 +126,7 @@ export class GameController {
     if (!simulation || !renderer) return;
 
     const frameSeconds = ticker.deltaMS / 1000;
-    const alpha = this.loop.advance(frameSeconds, (dt) => {
+    let alpha = this.loop.advance(frameSeconds, (dt) => {
       simulation.step(dt, this.keyboard.read());
     });
 
@@ -126,8 +135,66 @@ export class GameController {
       renderer.handleEvents(events);
       playEventSounds(events);
     }
+
+    if (simulation.outcome) {
+      // The simulation no longer advances; draw its final state without interpolation.
+      alpha = 1;
+      this.stepOutro(simulation, simulation.outcome, frameSeconds);
+    } else {
+      this.playWarnings(simulation);
+    }
+    this.publishHud(simulation);
     renderer.render(alpha, frameSeconds);
   };
+
+  private publishHud(simulation: GameSimulation): void {
+    const { match } = this.options.config;
+    const { player } = simulation;
+    this.options.store.publish({
+      health: Math.ceil(player.health),
+      maxHealth: player.maxHealth,
+      score: simulation.score,
+      timeLeft: displayedSeconds(simulation.remainingSeconds),
+      lowTime: simulation.remainingSeconds <= match.lowTimeSeconds,
+      lowHealth: player.health > 0 && player.health <= player.maxHealth * match.lowHealthRatio,
+      outcome: simulation.outcome,
+    });
+  }
+
+  /** Ticks during the last seconds and a one-off alarm when health first drops low. */
+  private playWarnings(simulation: GameSimulation): void {
+    const previous = this.options.store.getSnapshot();
+    const timeLeft = displayedSeconds(simulation.remainingSeconds);
+    if (timeLeft !== previous.timeLeft && timeLeft <= this.options.config.match.lowTimeSeconds) {
+      audio.play('timeWarning', 0.6);
+    }
+    const { player } = simulation;
+    const lowHealth =
+      player.health > 0 &&
+      player.health <= player.maxHealth * this.options.config.match.lowHealthRatio;
+    if (lowHealth && !previous.lowHealth) audio.play('healthLow', 0.8);
+  }
+
+  private stepOutro(simulation: GameSimulation, outcome: MatchOutcome, frameSeconds: number): void {
+    if (this.outroRemaining === null) {
+      this.outroRemaining = this.options.config.match.outroSeconds;
+      this.keyboard.setEnabled(false);
+      this.keyboard.clear();
+      this.options.store.publish({ phase: 'ending' });
+    }
+    this.outroRemaining -= frameSeconds;
+    if (this.outroRemaining > 0 || this.finished) return;
+
+    this.finished = true;
+    this.options.onFinish({
+      outcome,
+      score: simulation.score,
+      survivedSeconds: simulation.elapsedSeconds,
+      seed: simulation.seed,
+      config: simulation.config,
+      endedAt: new Date().toISOString(),
+    });
+  }
 
   private readonly handleCommand = (command: InputCommand): void => {
     switch (command) {
@@ -136,6 +203,11 @@ export class GameController {
         break;
     }
   };
+}
+
+/** Rounds up so the timer shows the full duration at the start and hits 0 only at the end. */
+function displayedSeconds(remaining: number): number {
+  return Math.ceil(remaining - 1e-6);
 }
 
 function destroyApplication(app: Application): void {
