@@ -1,0 +1,66 @@
+.match {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #0b2233;
+}
+
+.match__arena {
+  position: absolute;
+  inset: 0;
+}
+
+.match__arena .game-canvas {
+  display: block;
+  touch-action: none;
+}
+
+.match__legend {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgb(8 24 36 / 80%);
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
+.match__legend ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 2px;
+}
+
+.match__legend kbd {
+  display: inline-block;
+  min-width: 5.5em;
+  font-family: inherit;
+  font-weight: 700;
+  color: #ffd166;
+}
+
+.match__exit {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.match__overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 12px;
+  text-align: center;
+  background: rgb(8 24 36 / 85%);
+}
+
+.match__actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}

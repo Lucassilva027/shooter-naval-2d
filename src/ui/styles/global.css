@@ -24,7 +24,22 @@ body,
   outline-offset: 2px;
 }
 
+button {
+  font: inherit;
+  padding: 8px 18px;
+  border: 2px solid #f4ecd8;
+  border-radius: 8px;
+  background: #7a4a24;
+  color: #f4ecd8;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #8d5a2e;
+}
+
 .app {
+  gap: 16px;
   display: grid;
   place-content: center;
   height: 100%;

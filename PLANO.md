@@ -69,9 +69,13 @@ docs/
 - [ ] `ASSETS.md` com origem e licença dos assets
 
 #### 2. Game loop com delta time
-- [ ] `GameLoop` (passo fixo, acumulador, clamp)
-- [ ] `InputState` (teclado) + movimento do jogador (avançar + rotacionar)
-- [ ] Montagem Pixi dentro de React com cleanup (Strict Mode)
+- [x] `FixedStepLoop` (passo fixo, acumulador, clamp) + interpolação no render
+- [x] `KeyboardInput` (por `event.code`, só captura com gameplay ativa) + `mergeInputs` para teclado + toque
+- [x] Movimento com inércia (acelera, freia gradual, drag) e rotação; contenção nos limites da arena
+- [x] `GameController`: montagem Pixi dentro de React com cleanup seguro no Strict Mode
+- [x] Carregamento de assets com progresso, erro acessível e "Try again" (`strategy: 'retry'`)
+- [x] Mundo fixo por partida + letterbox no resize
+- [x] Testes: 14 unitários (Vitest) + 2 E2E (falha/nova tentativa de assets, 5 ciclos sem vazar canvas)
 
 #### 3. Colisões
 - [ ] Limites da arena
@@ -168,6 +172,9 @@ Fonte: https://github.com/junglegaming/game-developer-challenge
 | 2026-10-02 | Teclas: W/↑ avançar, S/↓ frear, A/D ou ←/→ girar, Espaço frontal, Q/E laterais, P/Esc pausa | — |
 | 2026-10-02 | Sprites escolhidos por cor (jogador, Chaser, Shooter distintos) | — |
 | 2026-10-02 | Tamanho do mundo definido pela tela ao iniciar a partida (com limites mín./máx.) e fixo durante ela; resize só muda a escala | atende "resize sem alterar regras" |
+
+| 2026-10-02 | Playwright no Windows usa GPU (`--use-angle=d3d11`), 2 workers, timeout 60 s | WebGL por software deixava cada ação ~6× mais lenta e estourava timeouts |
+| 2026-10-02 | Navios: jogador azul (`ship_5`), Chaser vermelho (`ship_3`), Shooter preto (`ship_2`); dano = +6, +12, +18 no índice | layout do atlas |
 
 Versões: React 19.3, PixiJS 8.22, TypeScript 6.0, Vite 8.3, TanStack Query 5.104, Axios 1.20, MSW 2.15, Playwright 1.63, Vitest 5.0.
 
