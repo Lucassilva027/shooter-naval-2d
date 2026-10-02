@@ -43,6 +43,11 @@ button:hover {
   background: #8d5a2e;
 }
 
+/* Component display rules must never un-hide an element marked `hidden`. */
+[hidden] {
+  display: none !important;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

@@ -3,9 +3,12 @@ import { createMatchConfig } from '@/config/gameConfig';
 import { createGameStore } from '@/game/bridge/gameStore';
 import { GameController } from '@/game/GameController';
 import { CONTROL_LEGEND } from '@/game/input/keyboardBindings';
+import { TouchInput } from '@/game/input/TouchInput';
 import type { MatchResult } from '@/game/matchResult';
+import { ConfirmDialog } from '@/ui/components/ConfirmDialog';
 import { HealthReadout, HudAnnouncements, ScoreReadout, TimerReadout } from '@/ui/components/Hud';
 import { MuteButton } from '@/ui/components/MuteButton';
+import { TouchControls } from '@/ui/components/TouchControls';
 import './MatchScreen.css';
 
 interface MatchScreenProps {
@@ -15,8 +18,11 @@ interface MatchScreenProps {
 
 export function MatchScreen({ onExit, onFinish }: MatchScreenProps) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const controllerRef = useRef<GameController | null>(null);
   const [store] = useState(createGameStore);
+  const [touch] = useState(() => new TouchInput());
   const [attempt, setAttempt] = useState(0);
+  const [confirmingLeave, setConfirmingLeave] = useState(false);
   const ui = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const finish = useEffectEvent(onFinish);
 
@@ -27,13 +33,33 @@ export function MatchScreen({ onExit, onFinish }: MatchScreenProps) {
       host,
       config: createMatchConfig(),
       store,
+      touch,
       onFinish: (result) => finish(result),
     });
+    controllerRef.current = controller;
     void controller.start();
-    return () => controller.destroy();
-  }, [store, attempt]);
+    return () => {
+      controller.destroy();
+      if (controllerRef.current === controller) controllerRef.current = null;
+    };
+  }, [store, touch, attempt]);
 
   const playing = ui.phase === 'running' || ui.phase === 'ending';
+
+  // Leaving only needs confirming while there is a battle to lose.
+  const requestLeave = () => {
+    if (ui.phase !== 'running') {
+      onExit();
+      return;
+    }
+    controllerRef.current?.setSuspended(true);
+    setConfirmingLeave(true);
+  };
+
+  const stay = () => {
+    setConfirmingLeave(false);
+    controllerRef.current?.setSuspended(false);
+  };
 
   return (
     <section className="match" aria-label="Battle">
@@ -49,6 +75,8 @@ export function MatchScreen({ onExit, onFinish }: MatchScreenProps) {
         </ul>
       </aside>
 
+      {ui.phase === 'running' && <TouchControls touch={touch} />}
+
       {ui.phase === 'loading' && (
         <div className="match__overlay" role="status" aria-live="polite">
           <p>Loading assets… {ui.loadProgress}%</p>
@@ -60,7 +88,11 @@ export function MatchScreen({ onExit, onFinish }: MatchScreenProps) {
         <div className="match__overlay" role="alert">
           <p>{ui.errorMessage}</p>
           <div className="match__actions">
-            <button type="button" onClick={() => setAttempt((n) => n + 1)}>
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={() => setAttempt((n) => n + 1)}
+            >
               Try again
             </button>
           </div>
@@ -79,13 +111,23 @@ export function MatchScreen({ onExit, onFinish }: MatchScreenProps) {
         <div className="match__slot match__slot--center">{playing && <TimerReadout ui={ui} />}</div>
         <div className="match__slot match__slot--end">
           {playing && <ScoreReadout ui={ui} />}
-          <MuteButton />
-          <button type="button" onClick={onExit}>
+          <MuteButton className="btn btn--secondary match__tool" />
+          <button type="button" className="btn btn--secondary match__tool" onClick={requestLeave}>
             Main Menu
           </button>
         </div>
       </header>
       {playing && <HudAnnouncements ui={ui} />}
+
+      <ConfirmDialog
+        open={confirmingLeave}
+        title="Leave battle?"
+        message="This match will end and won't be recorded."
+        cancelLabel="Keep fighting"
+        confirmLabel="Leave"
+        onCancel={stay}
+        onConfirm={onExit}
+      />
     </section>
   );
 }

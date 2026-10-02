@@ -121,8 +121,17 @@ docs/
 
 #### 7. Telas principais
 
-- [ ] Menu (Play, Options, instruções, abas Ranking/Histórico)
-- [ ] Partida, Resultado (pontos, tempo, motivo, status do registro, Play Again/Main Menu)
+- [x] Visual das telas de referência (`sample_*.png`): fundo `ui_scene_background.png`, painel nine-slice e botões do `ui_sheet` via `border-image` (1x/2x)
+- [x] Menu: Play, Options, How to play (diálogo), último resultado, botões Ranking / Match history
+- [x] Records: abas ARIA (Ranking | Match history) com setas do teclado; conteúdo vazio até a fase 9
+- [x] Apelido na 1ª partida: `<dialog>` modal, 3–16 caracteres (letras, números, espaço, `-`, `_`), `playerId` via `crypto.randomUUID()`
+- [x] Options (parcial): trocar apelido, som; duração/spawn ficam na fase 8
+- [x] Sair da partida: confirmação "Leave battle?" com a partida suspensa (`GameController.setSuspended`), foco em "Keep fighting"
+- [x] Resultado: título por motivo, pontos, tempo, motivo, "New best!" / melhor anterior; último resultado e recorde por config (`configKey`) salvos localmente
+- [ ] Status do registro no Resultado (fase 9)
+- [x] Controles de toque (`TouchInput` + stick e 3 botões de canhão, só em `pointer: coarse`) e aviso para girar em retrato
+- [x] Botão de pausa no toque fica para a fase 10
+- [x] 7 testes unitários novos (64) e 7 E2E novos por projeto (18 no total)
 
 #### 8. Options
 
@@ -225,6 +234,11 @@ Fonte: https://github.com/junglegaming/game-developer-challenge
 | 2026-10-02 | Duração padrão 120 s; fim congela a simulação e a pontuação na hora; 1,5 s de encerramento antes do resultado | proposta aceita |
 | 2026-10-02 | HUD: vida à esquerda, tempo no centro, pontos à direita junto dos botões; barra sobre o navio do jogador mantida | proposta aceita |
 | 2026-10-02 | Aviso de tempo nos últimos 10 s (visual + som); leitor de tela só recebe marcos | `aria-live` com moderação |
+
+| 2026-10-02 | Fundo das telas = `ui_scene_background.png` (em vez de tile animado) | as telas de referência do desafio usam essa arte; continua só CSS, sem Pixi |
+| 2026-10-02 | Ranking/Histórico: botões no Menu abrem uma tela com abas | atende a referência (botões) e a escolha por abas |
+| 2026-10-02 | Recorde pessoal só compara partidas com o mesmo `configKey` (duração + spawn) | mesma regra do ranking |
+| 2026-10-02 | Toque: stick (cima = avançar, baixo = frear, lados = girar) + Fire/Port/Starboard; escondidos de leitores de tela | o teclado continua sendo a entrada acessível |
 
 Versões: React 19.3, PixiJS 8.22, TypeScript 6.0, Vite 8.3, TanStack Query 5.104, Axios 1.20, MSW 2.15, Playwright 1.63, Vitest 5.0.
 

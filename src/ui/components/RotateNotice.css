@@ -1,0 +1,42 @@
+.rotate-notice {
+  display: none;
+}
+
+@media (orientation: portrait) and (pointer: coarse) {
+  .rotate-notice {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 20px;
+    padding: 24px;
+    text-align: center;
+    font-size: 1.2rem;
+    font-weight: 700;
+    background: #0b2233;
+  }
+}
+
+.rotate-notice__phone {
+  width: 48px;
+  height: 80px;
+  border: 4px solid #ffd166;
+  border-radius: 10px;
+  animation: rotate-hint 2s ease-in-out infinite;
+}
+
+@keyframes rotate-hint {
+  40%,
+  100% {
+    transform: rotate(90deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rotate-notice__phone {
+    animation: none;
+    transform: rotate(90deg);
+  }
+}

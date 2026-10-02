@@ -13,3 +13,11 @@ export interface MatchResult {
   /** ISO timestamp. */
   readonly endedAt: string;
 }
+
+/**
+ * Identifies the player-adjustable settings a match was played with. Scores are only
+ * compared (personal best, ranking) between matches with the same key.
+ */
+export function configKey(config: GameConfig): string {
+  return `d${config.match.durationSeconds}-s${config.enemies.spawn.intervalSeconds}`;
+}

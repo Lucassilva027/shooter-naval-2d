@@ -43,6 +43,25 @@
   color: #ffd166;
 }
 
+@media (pointer: coarse) {
+  .match__legend {
+    display: none;
+  }
+}
+
+.match__tool {
+  --btn-height: 38px;
+  min-width: 0;
+  font-size: 0.75rem;
+}
+
+@media (max-height: 500px) {
+  .match__tool {
+    --btn-height: 32px;
+    font-size: 0.65rem;
+  }
+}
+
 .match__topbar {
   position: absolute;
   top: 12px;

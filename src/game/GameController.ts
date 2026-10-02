@@ -9,8 +9,9 @@ import { FixedStepLoop } from './core/FixedStepLoop';
 import { GameSimulation } from './core/GameSimulation';
 import { randomSeed } from './core/random';
 import { resolveWorldSize } from './core/worldSize';
-import type { InputCommand } from './input/actions';
+import { mergeInputs, type InputCommand, type InputSource } from './input/actions';
 import { KeyboardInput } from './input/KeyboardInput';
+import type { TouchInput } from './input/TouchInput';
 import type { MatchResult } from './matchResult';
 import { GameRenderer } from './render/GameRenderer';
 
@@ -24,6 +25,8 @@ export interface GameControllerOptions {
   readonly host: HTMLElement;
   readonly config: GameConfig;
   readonly store: GameStore;
+  /** On-screen controls; merged with the keyboard. */
+  readonly touch: TouchInput;
   /** Called once, after the outro, when the match is over. Never called if destroyed first. */
   readonly onFinish: (result: MatchResult) => void;
 }
@@ -40,14 +43,33 @@ export class GameController {
   private simulation: GameSimulation | null = null;
   private readonly loop: FixedStepLoop;
   private readonly keyboard: KeyboardInput;
+  private readonly input: InputSource;
   /** Real seconds left in the outro; null while the match is still being played. */
   private outroRemaining: number | null = null;
   private finished = false;
+  /** While true, time stands still (e.g. the leave-battle confirmation is open). */
+  private suspended = false;
 
   constructor(private readonly options: GameControllerOptions) {
     const { simulation } = options.config;
     this.loop = new FixedStepLoop(simulation.fixedStepSeconds, simulation.maxFrameSeconds);
     this.keyboard = new KeyboardInput(window, this.handleCommand);
+    this.input = mergeInputs([this.keyboard, options.touch]);
+  }
+
+  /** Freezes or resumes the match. Held keys and touches are dropped either way. */
+  setSuspended(suspended: boolean): void {
+    if (this.destroyed || this.suspended === suspended) return;
+    this.suspended = suspended;
+    this.loop.reset();
+    this.updateInputEnabled();
+  }
+
+  private updateInputEnabled(): void {
+    const active = !this.suspended && this.simulation !== null && this.outroRemaining === null;
+    this.keyboard.setEnabled(active);
+    this.options.touch.setEnabled(active);
+    this.input.clear();
   }
 
   async start(): Promise<void> {
@@ -89,7 +111,7 @@ export class GameController {
       });
 
       this.keyboard.attach();
-      this.keyboard.setEnabled(true);
+      this.updateInputEnabled();
       app.ticker.add(this.tick);
       audio.startLoop('oceanLoop', 0.25);
       audio.play('gameStart', 0.7);
@@ -110,6 +132,7 @@ export class GameController {
     this.destroyed = true;
 
     this.keyboard.detach();
+    this.options.touch.setEnabled(false);
     audio.stopAllLoops();
     this.app?.ticker.remove(this.tick);
     this.renderer?.destroy();
@@ -125,9 +148,14 @@ export class GameController {
     const renderer = this.renderer;
     if (!simulation || !renderer) return;
 
+    if (this.suspended) {
+      renderer.render(1, 0);
+      return;
+    }
+
     const frameSeconds = ticker.deltaMS / 1000;
     let alpha = this.loop.advance(frameSeconds, (dt) => {
-      simulation.step(dt, this.keyboard.read());
+      simulation.step(dt, this.input.read());
     });
 
     const events = simulation.drainEvents();
@@ -178,8 +206,7 @@ export class GameController {
   private stepOutro(simulation: GameSimulation, outcome: MatchOutcome, frameSeconds: number): void {
     if (this.outroRemaining === null) {
       this.outroRemaining = this.options.config.match.outroSeconds;
-      this.keyboard.setEnabled(false);
-      this.keyboard.clear();
+      this.updateInputEnabled();
       this.options.store.publish({ phase: 'ending' });
     }
     this.outroRemaining -= frameSeconds;
