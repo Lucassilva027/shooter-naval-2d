@@ -95,12 +95,85 @@ export interface PlayerConfig {
   };
 }
 
+export type EnemyKind = 'chaser' | 'shooter';
+
+export interface SpawnConfig {
+  /** Seconds between spawns; exposed in Options as "Enemy spawn time". */
+  readonly intervalSeconds: number;
+  /** Delay before the first spawn of a match. */
+  readonly initialDelaySeconds: number;
+  /** When this many enemies are alive, the next spawn waits for a free slot. */
+  readonly maxAlive: number;
+  /** Kinds spawned first, in order, so both types appear early in every match. */
+  readonly openingOrder: readonly EnemyKind[];
+  /** Probability (0-1) that a spawn after the opening order is a Chaser. */
+  readonly chaserWeight: number;
+  /** Spawn points are at least this far from the player. */
+  readonly minDistanceFromPlayer: number;
+  /** Extra clearance around islands and other ships at the spawn point. */
+  readonly clearance: number;
+  /** Random positions tried per spawn before giving up until the next step. */
+  readonly maxAttempts: number;
+}
+
+export interface SteeringConfig {
+  /** How far ahead enemies probe for islands. */
+  readonly lookAhead: number;
+  /** Angle of the side probes relative to the heading. */
+  readonly whiskerAngle: number;
+  /** Heading change applied to steer around a blocked path. */
+  readonly avoidAngle: number;
+  /** Heading error below which the ship stops turning (prevents jitter). */
+  readonly turnDeadZone: number;
+}
+
+export interface EnemyShipConfig {
+  readonly maxHealth: number;
+  readonly hull: readonly HullCircle[];
+  readonly motion: ShipMotionConfig;
+}
+
+export interface ChaserConfig extends EnemyShipConfig {
+  /** Damage dealt to the player on impact; the Chaser explodes. */
+  readonly contactDamage: number;
+}
+
+export interface ShooterConfig extends EnemyShipConfig {
+  /** Fires only when the player is within this distance. */
+  readonly attackRange: number;
+  /** Stops approaching at `attackRange * holdDistanceRatio`. */
+  readonly holdDistanceRatio: number;
+  /** Fires only when its bow points within this angle of the player. */
+  readonly aimTolerance: number;
+  readonly weapon: FrontWeaponConfig;
+}
+
+export interface EnemiesConfig {
+  readonly spawn: SpawnConfig;
+  readonly steering: SteeringConfig;
+  readonly chaser: ChaserConfig;
+  readonly shooter: ShooterConfig;
+}
+
 export interface GameConfig {
   readonly simulation: SimulationConfig;
   readonly world: WorldConfig;
   readonly arena: ArenaConfig;
   readonly player: PlayerConfig;
+  readonly enemies: EnemiesConfig;
 }
+
+/** Documented limits for the values exposed in Options. */
+export const OPTION_LIMITS = {
+  matchDurationSeconds: { min: 60, max: 180, default: 120 },
+  enemySpawnSeconds: { min: 1, max: 15, default: 4 },
+} as const;
+
+const SHIP_HULL: readonly HullCircle[] = [
+  { offset: 30, radius: 22 },
+  { offset: 0, radius: 27 },
+  { offset: -30, radius: 22 },
+];
 
 export const defaultGameConfig: GameConfig = {
   simulation: {
@@ -123,11 +196,7 @@ export const defaultGameConfig: GameConfig = {
   },
   player: {
     maxHealth: 100,
-    hull: [
-      { offset: 30, radius: 22 },
-      { offset: 0, radius: 27 },
-      { offset: -30, radius: 22 },
-    ],
+    hull: SHIP_HULL,
     motion: {
       maxSpeed: 220,
       acceleration: 160,
@@ -146,6 +215,55 @@ export const defaultGameConfig: GameConfig = {
         shotOffsets: [26, 0, -26],
         muzzleOffset: 32,
         projectile: { speed: 420, lifetimeSeconds: 1.2, damage: 15, radius: 6 },
+      },
+    },
+  },
+  enemies: {
+    spawn: {
+      intervalSeconds: OPTION_LIMITS.enemySpawnSeconds.default,
+      initialDelaySeconds: 2,
+      maxAlive: 10,
+      openingOrder: ['chaser', 'shooter'],
+      chaserWeight: 0.6,
+      minDistanceFromPlayer: 380,
+      clearance: 24,
+      maxAttempts: 30,
+    },
+    steering: {
+      lookAhead: 150,
+      whiskerAngle: 0.45,
+      avoidAngle: 1.1,
+      turnDeadZone: 0.05,
+    },
+    chaser: {
+      maxHealth: 40,
+      hull: SHIP_HULL,
+      contactDamage: 25,
+      motion: {
+        maxSpeed: 170,
+        acceleration: 200,
+        brakeDeceleration: 200,
+        drag: 45,
+        turnSpeed: Math.PI * 0.9,
+      },
+    },
+    shooter: {
+      maxHealth: 60,
+      hull: SHIP_HULL,
+      attackRange: 380,
+      holdDistanceRatio: 0.8,
+      aimTolerance: 0.2,
+      motion: {
+        maxSpeed: 120,
+        acceleration: 120,
+        brakeDeceleration: 160,
+        drag: 45,
+        turnSpeed: Math.PI * 0.7,
+      },
+      weapon: {
+        cooldownSeconds: 1.6,
+        muzzleOffset: 58,
+        projectile: { speed: 340, lifetimeSeconds: 1.3, damage: 10, radius: 6 },
       },
     },
   },

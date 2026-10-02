@@ -1,4 +1,5 @@
 import { Container, Graphics, TilingSprite, type Application, type Texture } from 'pixi.js';
+import type { EnemyKind } from '@/config/gameConfig';
 import type { GameTextures } from '../assets/gameAssets';
 import type { GameEvent } from '../core/events';
 import type { GameSimulation } from '../core/GameSimulation';
@@ -13,6 +14,9 @@ export interface GameRendererOptions {
 }
 
 const SAND_TINT = 0xe8c98f;
+const PLAYER_BAR_COLOR = 0x4cd964;
+const ENEMY_BAR_COLOR = 0xff4d4d;
+const WRECK_SECONDS = 2.2;
 
 /**
  * Read-only view of the simulation. It never mutates game state; it only mirrors it into
@@ -22,7 +26,11 @@ export class GameRenderer {
   /** World-space root; scaled and centred inside the canvas. */
   readonly world = new Container();
   private readonly playerView: ShipView;
+  private readonly enemyViews = new Map<number, ShipView>();
+  private readonly enemyLayer = new Container({ label: 'enemies' });
   private readonly projectiles: ProjectileLayer;
+  /** Sinking wrecks, drawn under the ships. */
+  private readonly wrecks = new EffectsLayer();
   private readonly effects = new EffectsLayer();
   private readonly splashRing: Texture;
   private readonly colliders: Graphics | null;
@@ -45,10 +53,12 @@ export class GameRenderer {
       islands.addChild(createIslandSprite(island, textures.islands[island.art]));
     }
 
-    this.playerView = new ShipView(textures.ships.player);
+    this.playerView = new ShipView(textures.ships.player, { barColor: PLAYER_BAR_COLOR });
     this.projectiles = new ProjectileLayer(textures.cannonBall);
     this.world.addChild(
       islands,
+      this.wrecks.container,
+      this.enemyLayer,
       this.playerView.container,
       this.projectiles.container,
       this.effects.container,
@@ -69,10 +79,22 @@ export class GameRenderer {
   /** Turns simulation events into visual feedback. */
   handleEvents(events: readonly GameEvent[]): void {
     for (const event of events) {
-      if (event.type === 'shot') this.spawnMuzzleFlash(event.x, event.y, event.direction);
-      else if (event.surface === 'water') this.spawnSplash(event.x, event.y);
-      else if (event.surface === 'island') this.spawnDust(event.x, event.y);
-      else this.spawnShipHit(event.x, event.y, event.shipId);
+      switch (event.type) {
+        case 'shot':
+          this.spawnMuzzleFlash(event.x, event.y, event.direction);
+          break;
+        case 'impact':
+          if (event.surface === 'water') this.spawnSplash(event.x, event.y);
+          else if (event.surface === 'island') this.spawnDust(event.x, event.y);
+          else this.spawnShipHit(event.x, event.y, event.shipId);
+          break;
+        case 'enemySpawned':
+          this.addEnemyView(event.shipId, event.kind);
+          break;
+        case 'shipDestroyed':
+          this.sinkShip(event);
+          break;
+      }
     }
   }
 
@@ -80,14 +102,32 @@ export class GameRenderer {
   render(alpha: number, frameSeconds: number): void {
     this.playerView.sync(this.simulation.player, alpha);
     this.playerView.update(frameSeconds);
+    for (const enemy of this.simulation.enemies) {
+      const view = this.enemyViews.get(enemy.id);
+      if (!view) continue;
+      view.sync(enemy, alpha);
+      view.update(frameSeconds);
+    }
     this.projectiles.sync(this.simulation.projectiles, alpha);
+    this.wrecks.update(frameSeconds);
     this.effects.update(frameSeconds);
     if (this.colliders) this.drawColliders(this.colliders);
   }
 
+  /** Sprites currently in the scene, for performance instrumentation. */
+  get entityCounts(): { ships: number; projectiles: number; effects: number } {
+    return {
+      ships: 1 + this.enemyViews.size,
+      projectiles: this.simulation.projectiles.length,
+      effects: this.effects.count + this.wrecks.count,
+    };
+  }
+
   destroy(): void {
     this.app.renderer.off('resize', this.layout);
+    this.enemyViews.clear();
     this.projectiles.destroy();
+    this.wrecks.destroy();
     this.effects.destroy();
     this.world.destroy({ children: true });
     this.splashRing.destroy(true);
@@ -141,7 +181,59 @@ export class GameRenderer {
     const medium = this.textures.explosions[1];
     if (medium) this.effects.spawn(medium, x, y, { duration: 0.3, fromScale: 0.35, toScale: 0.7 });
 
-    for (let i = 0; i < 2; i++) {
+    this.spawnDebris(x, y, 2, 60);
+
+    if (shipId === this.simulation.player.id) this.playerView.flash();
+    else if (shipId !== undefined) this.enemyViews.get(shipId)?.flash();
+  }
+
+  private addEnemyView(id: number, kind: EnemyKind): void {
+    const view = new ShipView(this.textures.ships[kind], {
+      barColor: ENEMY_BAR_COLOR,
+      fadeIn: true,
+    });
+    const enemy = this.simulation.enemies.find((e) => e.id === id);
+    if (enemy) view.sync(enemy, 1);
+    this.enemyViews.set(id, view);
+    this.enemyLayer.addChild(view.container);
+  }
+
+  private sinkShip(event: Extract<GameEvent, { type: 'shipDestroyed' }>): void {
+    const view = this.enemyViews.get(event.shipId);
+    if (view) {
+      this.enemyViews.delete(event.shipId);
+      view.destroy();
+    }
+
+    const skin = event.kind ?? 'player';
+    const wreck = this.textures.ships[skin][this.textures.ships[skin].length - 1];
+    if (wreck) {
+      this.wrecks.spawn(wreck, event.x, event.y, {
+        duration: WRECK_SECONDS,
+        fromScale: 1,
+        toScale: 0.8,
+        rotation: event.rotation - Math.PI / 2,
+        spin: 0.15,
+      });
+    }
+
+    const big = this.textures.explosions[0];
+    if (big)
+      this.effects.spawn(big, event.x, event.y, { duration: 0.6, fromScale: 0.6, toScale: 1.4 });
+    const flame = this.textures.flames[0];
+    if (flame) {
+      this.effects.spawn(flame, event.x, event.y, {
+        duration: 1.2,
+        fromScale: 1,
+        toScale: 0.4,
+        vy: -12,
+      });
+    }
+    this.spawnDebris(event.x, event.y, 5, 110);
+  }
+
+  private spawnDebris(x: number, y: number, count: number, speed: number): void {
+    for (let i = 0; i < count; i++) {
       const piece = this.textures.debris[Math.floor(Math.random() * this.textures.debris.length)];
       if (!piece) continue;
       const angle = Math.random() * Math.PI * 2;
@@ -150,27 +242,27 @@ export class GameRenderer {
         fromScale: 1,
         toScale: 0.6,
         rotation: angle,
-        vx: Math.cos(angle) * 60,
-        vy: Math.sin(angle) * 60,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
         spin: 6,
       });
     }
-
-    if (shipId === this.simulation.player.id) this.playerView.flash();
   }
 
   private drawColliders(graphics: Graphics): void {
-    const { islands, player } = this.simulation;
+    const { islands, player, enemies } = this.simulation;
     graphics.clear();
     for (const island of islands) {
       for (const collider of island.colliders) {
         graphics.circle(collider.x, collider.y, collider.radius);
       }
     }
-    const cos = Math.cos(player.rotation);
-    const sin = Math.sin(player.rotation);
-    for (const hull of player.hull) {
-      graphics.circle(player.x + cos * hull.offset, player.y + sin * hull.offset, hull.radius);
+    for (const ship of [player, ...enemies]) {
+      const cos = Math.cos(ship.rotation);
+      const sin = Math.sin(ship.rotation);
+      for (const hull of ship.hull) {
+        graphics.circle(ship.x + cos * hull.offset, ship.y + sin * hull.offset, hull.radius);
+      }
     }
     graphics.stroke({ width: 2, color: 0xff3366 });
   }

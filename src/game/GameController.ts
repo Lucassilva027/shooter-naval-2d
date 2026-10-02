@@ -6,10 +6,17 @@ import { playEventSounds } from './audio/gameSounds';
 import type { GameStore } from './bridge/gameStore';
 import { FixedStepLoop } from './core/FixedStepLoop';
 import { GameSimulation } from './core/GameSimulation';
+import { randomSeed } from './core/random';
 import { resolveWorldSize } from './core/worldSize';
 import type { InputCommand } from './input/actions';
 import { KeyboardInput } from './input/KeyboardInput';
 import { GameRenderer } from './render/GameRenderer';
+
+/** `?seed=123` reproduces a match exactly (used by tests); otherwise every match differs. */
+function matchSeed(params: URLSearchParams): number {
+  const seed = Number.parseInt(params.get('seed') ?? '', 10);
+  return Number.isFinite(seed) ? seed >>> 0 : randomSeed();
+}
 
 export interface GameControllerOptions {
   readonly host: HTMLElement;
@@ -68,9 +75,10 @@ export class GameController {
         { width: host.clientWidth, height: host.clientHeight },
         config.world,
       );
-      this.simulation = new GameSimulation(config, arena);
+      const params = new URLSearchParams(window.location.search);
+      this.simulation = new GameSimulation(config, arena, matchSeed(params));
       this.renderer = new GameRenderer(app, textures, this.simulation, {
-        showColliders: new URLSearchParams(window.location.search).has('colliders'),
+        showColliders: params.has('colliders'),
       });
 
       this.keyboard.attach();

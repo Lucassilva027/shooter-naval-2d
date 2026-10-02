@@ -99,14 +99,19 @@ docs/
 
 #### 5. Inimigos
 
-- [ ] Chaser (persegue, explode no impacto, não pontua ao se autodestruir)
-- [ ] Shooter (aproxima, dispara no alcance)
-- [ ] Spawner com intervalo configurável, pontos livres e longe do jogador
+- [x] Chaser (persegue, explode no impacto com 25 de dano, não pontua ao se autodestruir)
+- [x] Shooter (aproxima até ~80% do alcance, mira, dispara com linha de visão livre)
+- [x] Desvio de ilhas por "bigodes" (sondas à frente e laterais)
+- [x] Spawner com intervalo configurável, abertura 1 de cada, sorteio 60/40 com seed, teto de 10 vivos
+- [x] Pontos de spawn livres de ilhas/navios e longe do jogador; `?seed=` na URL reproduz a partida
+- [x] Inimigo afundado sai da simulação na hora (sem colisão/tiro), destroço afundando + explosão + som
+- [x] Barras de vida sobre todos os navios (redesenhadas só quando a vida muda), fade-in no spawn
+- [x] 16 testes novos (spawner + comportamento dos inimigos + pontuação), 52 no total
 
 #### 6. HUD
 
 - [ ] Vida, pontos, tempo (semântico, `aria-live` com moderação)
-- [ ] Health bars sobre navios, deterioração visual
+- [x] Health bars sobre navios, deterioração visual (feito na fase 5)
 
 #### 7. Telas principais
 
@@ -205,6 +210,11 @@ Fonte: https://github.com/junglegaming/game-developer-challenge
 | 2026-10-02 | Segurar tiro = automático no cooldown; laterais com cooldown por lado | — |
 | 2026-10-02 | Frontal 20 dano/0,4 s; lateral 3×15/1,5 s; bala 420 u/s, 1,2 s, raio 6 (desenhada no tamanho da colisão) | proposta aceita; raio 5→6 por legibilidade |
 | 2026-10-02 | Áudio desde já, Web Audio, falhas de áudio nunca bloqueiam o jogo | — |
+
+| 2026-10-02 | Spawn a cada 4 s (limites 1–15 s), 1º spawn aos 2 s, abertura Chaser→Shooter, depois 60% Chaser / 40% Shooter com seed | proposta aceita |
+| 2026-10-02 | Máximo 10 inimigos vivos; spawn espera vaga | performance e legibilidade |
+| 2026-10-02 | Chaser 40 HP, 170 u/s, 25 de dano no impacto; Shooter 60 HP, 120 u/s, alcance 380, 10 de dano a cada 1,6 s, para a 80% do alcance | proposta aceita |
+| 2026-10-02 | Toda aleatoriedade da simulação vem de `createRandom(seed)` (mulberry32) | partidas reproduzíveis em testes |
 
 Versões: React 19.3, PixiJS 8.22, TypeScript 6.0, Vite 8.3, TanStack Query 5.104, Axios 1.20, MSW 2.15, Playwright 1.63, Vitest 5.0.
 

@@ -35,6 +35,32 @@ export function shipOverlapsCircle(ship: Ship, circle: Circle): boolean {
   return false;
 }
 
+/** True when any hull circle of `a` overlaps any hull circle of `b`. */
+export function shipsOverlap(a: Ship, b: Ship): boolean {
+  if (!circlesOverlap(a.x, a.y, a.boundingRadius, b.x, b.y, b.boundingRadius)) return false;
+  const cosA = Math.cos(a.rotation);
+  const sinA = Math.sin(a.rotation);
+  const cosB = Math.cos(b.rotation);
+  const sinB = Math.sin(b.rotation);
+  for (const hullA of a.hull) {
+    for (const hullB of b.hull) {
+      if (
+        circlesOverlap(
+          a.x + cosA * hullA.offset,
+          a.y + sinA * hullA.offset,
+          hullA.radius,
+          b.x + cosB * hullB.offset,
+          b.y + sinB * hullB.offset,
+          hullB.radius,
+        )
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 export function shipOverlapsIsland(ship: Ship, island: Island): boolean {
   if (
     !circlesOverlap(ship.x, ship.y, ship.boundingRadius, island.x, island.y, island.boundingRadius)

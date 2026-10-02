@@ -44,11 +44,15 @@ export function createShip(spawn: ShipSpawn): Ship {
     maxHealth: spawn.maxHealth,
     maxSpeed: spawn.maxSpeed,
     hull: spawn.hull,
-    boundingRadius: Math.max(...spawn.hull.map((c) => Math.abs(c.offset) + c.radius)),
+    boundingRadius: hullBoundingRadius(spawn.hull),
     prevX: spawn.x,
     prevY: spawn.y,
     prevRotation: spawn.rotation,
   };
+}
+
+export function hullBoundingRadius(hull: readonly HullCircle[]): number {
+  return Math.max(...hull.map((c) => Math.abs(c.offset) + c.radius));
 }
 
 export function rememberPreviousState(ship: Ship): void {

@@ -4,13 +4,24 @@ import { audio } from './AudioManager';
 /** Maps simulation events to sound effects. */
 export function playEventSounds(events: readonly GameEvent[]): void {
   for (const event of events) {
-    if (event.type === 'shot') {
-      if (event.weapon === 'broadside') audio.play('broadside', 0.8);
-      else audio.playOneOf(['cannonFire1', 'cannonFire2', 'cannonFire3'], 0.7);
-    } else if (event.surface === 'ship') {
-      audio.playOneOf(['woodHit1', 'woodHit2'], 0.9);
-    } else {
-      audio.playOneOf(['waterHit1', 'waterHit2'], event.surface === 'water' ? 0.35 : 0.5);
+    switch (event.type) {
+      case 'shot':
+        if (event.weapon === 'broadside') audio.play('broadside', 0.8);
+        else
+          audio.playOneOf(
+            ['cannonFire1', 'cannonFire2', 'cannonFire3'],
+            event.faction === 'enemy' ? 0.45 : 0.7,
+          );
+        break;
+      case 'impact':
+        if (event.surface === 'ship') audio.playOneOf(['woodHit1', 'woodHit2'], 0.9);
+        else audio.playOneOf(['waterHit1', 'waterHit2'], event.surface === 'water' ? 0.35 : 0.5);
+        break;
+      case 'shipDestroyed':
+        audio.playOneOf(['explosion1', 'explosion2'], 0.9);
+        break;
+      case 'enemySpawned':
+        break;
     }
   }
 }
