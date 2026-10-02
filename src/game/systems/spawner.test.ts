@@ -49,7 +49,8 @@ describe('spawner', () => {
     for (let i = 1; i < times.length; i++) {
       expect((times[i] ?? 0) - (times[i - 1] ?? 0)).toBeCloseTo(config.intervalSeconds, 1);
     }
-    expect(times).toHaveLength(4);
+    const expected = Math.floor((15 - config.initialDelaySeconds) / config.intervalSeconds) + 1;
+    expect(times).toHaveLength(expected);
   });
 
   it('opens with one enemy of each kind', () => {

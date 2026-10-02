@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from 'react';
-import { createMatchConfig } from '@/config/gameConfig';
+import { createMatchConfig, type GameOptions } from '@/config/gameConfig';
 import { createGameStore } from '@/game/bridge/gameStore';
 import { GameController } from '@/game/GameController';
 import { CONTROL_LEGEND } from '@/game/input/keyboardBindings';
@@ -12,12 +12,15 @@ import { TouchControls } from '@/ui/components/TouchControls';
 import './MatchScreen.css';
 
 interface MatchScreenProps {
+  /** Read once when the match starts; the match keeps its own frozen snapshot. */
+  readonly options: GameOptions;
   readonly onExit: () => void;
   readonly onFinish: (result: MatchResult) => void;
 }
 
-export function MatchScreen({ onExit, onFinish }: MatchScreenProps) {
+export function MatchScreen({ options, onExit, onFinish }: MatchScreenProps) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const [config] = useState(() => createMatchConfig(options));
   const controllerRef = useRef<GameController | null>(null);
   const [store] = useState(createGameStore);
   const [touch] = useState(() => new TouchInput());
@@ -31,7 +34,7 @@ export function MatchScreen({ onExit, onFinish }: MatchScreenProps) {
     if (!host) return;
     const controller = new GameController({
       host,
-      config: createMatchConfig(),
+      config,
       store,
       touch,
       onFinish: (result) => finish(result),
@@ -42,7 +45,7 @@ export function MatchScreen({ onExit, onFinish }: MatchScreenProps) {
       controller.destroy();
       if (controllerRef.current === controller) controllerRef.current = null;
     };
-  }, [store, touch, attempt]);
+  }, [config, store, touch, attempt]);
 
   const playing = ui.phase === 'running' || ui.phase === 'ending';
 

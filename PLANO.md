@@ -135,8 +135,13 @@ docs/
 
 #### 8. Options
 
-- [ ] Duração (60–180 s), intervalo de spawn (limites documentados)
-- [ ] Validação + persistência em localStorage
+- [x] Duração (60–180 s, passo 10) e intervalo de spawn (1–15 s, passo 1, padrão 3) em `OPTION_LIMITS`
+- [x] Steppers −/+ como na referência, `role=spinbutton` (setas, Page Up/Down, Home/End), botões desabilitados nos limites
+- [x] Salvamento automático a cada mudança; "Reset to defaults" com anúncio para leitor de tela
+- [x] Validação por campo (`normalizeOption`): limita, alinha ao passo, valor inválido → padrão
+- [x] `createMatchConfig(options)` aplica as opções num snapshot congelado no início da partida
+- [x] Captain e Sound abaixo dos steppers + nota sobre ranking por configuração
+- [x] 8 testes unitários novos (72) e 6 E2E novos por projeto (30 no total)
 
 #### ✈️ Deploy de segurança na Vercel (fim do Dia 1)
 
@@ -239,6 +244,9 @@ Fonte: https://github.com/junglegaming/game-developer-challenge
 | 2026-10-02 | Ranking/Histórico: botões no Menu abrem uma tela com abas | atende a referência (botões) e a escolha por abas |
 | 2026-10-02 | Recorde pessoal só compara partidas com o mesmo `configKey` (duração + spawn) | mesma regra do ranking |
 | 2026-10-02 | Toque: stick (cima = avançar, baixo = frear, lados = girar) + Fire/Port/Starboard; escondidos de leitores de tela | o teclado continua sendo a entrada acessível |
+
+| 2026-10-02 | Options: steppers, duração passo 10 s, spawn passo 1 s, spawn padrão 3 s (era 4 s) | igual à referência `sample_options.png` |
+| 2026-10-02 | Options salvam automaticamente; reset disponível; valores corrompidos reparados por campo | proposta aceita |
 
 Versões: React 19.3, PixiJS 8.22, TypeScript 6.0, Vite 8.3, TanStack Query 5.104, Axios 1.20, MSW 2.15, Playwright 1.63, Vitest 5.0.
 

@@ -175,11 +175,38 @@ export interface GameConfig {
   readonly enemies: EnemiesConfig;
 }
 
+/** Settings the player can change in Options. */
+export interface GameOptions {
+  readonly matchDurationSeconds: number;
+  readonly enemySpawnSeconds: number;
+}
+
+export interface OptionLimit {
+  readonly min: number;
+  readonly max: number;
+  /** Values are always `min + k * step`. */
+  readonly step: number;
+  readonly default: number;
+}
+
 /** Documented limits for the values exposed in Options. */
-export const OPTION_LIMITS = {
-  matchDurationSeconds: { min: 60, max: 180, default: 120 },
-  enemySpawnSeconds: { min: 1, max: 15, default: 4 },
-} as const;
+export const OPTION_LIMITS: Readonly<Record<keyof GameOptions, OptionLimit>> = {
+  matchDurationSeconds: { min: 60, max: 180, step: 10, default: 120 },
+  enemySpawnSeconds: { min: 1, max: 15, step: 1, default: 3 },
+};
+
+export const DEFAULT_OPTIONS: GameOptions = {
+  matchDurationSeconds: OPTION_LIMITS.matchDurationSeconds.default,
+  enemySpawnSeconds: OPTION_LIMITS.enemySpawnSeconds.default,
+};
+
+/** Clamps into the limits and snaps to the step grid; non-numbers fall back to the default. */
+export function normalizeOption(value: unknown, limit: OptionLimit): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return limit.default;
+  const clamped = Math.min(limit.max, Math.max(limit.min, value));
+  const snapped = limit.min + Math.round((clamped - limit.min) / limit.step) * limit.step;
+  return Math.min(limit.max, snapped);
+}
 
 const SHIP_HULL: readonly HullCircle[] = [
   { offset: 30, radius: 22 },
@@ -287,9 +314,35 @@ export const defaultGameConfig: GameConfig = {
   },
 };
 
-/** Immutable copy used by a single match; later option changes only affect new matches. */
-export function createMatchConfig(base: GameConfig = defaultGameConfig): GameConfig {
-  return deepFreeze(structuredClone(base));
+/**
+ * Immutable snapshot used by a single match, with the player's options applied. Later
+ * option changes only affect new matches.
+ */
+export function createMatchConfig(
+  options: GameOptions = DEFAULT_OPTIONS,
+  base: GameConfig = defaultGameConfig,
+): GameConfig {
+  const config = structuredClone(base);
+  return deepFreeze({
+    ...config,
+    match: {
+      ...config.match,
+      durationSeconds: normalizeOption(
+        options.matchDurationSeconds,
+        OPTION_LIMITS.matchDurationSeconds,
+      ),
+    },
+    enemies: {
+      ...config.enemies,
+      spawn: {
+        ...config.enemies.spawn,
+        intervalSeconds: normalizeOption(
+          options.enemySpawnSeconds,
+          OPTION_LIMITS.enemySpawnSeconds,
+        ),
+      },
+    },
+  });
 }
 
 function deepFreeze<T>(value: T): T {

@@ -165,6 +165,12 @@
   color: var(--gold);
 }
 
+.btn--secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  color: var(--parchment);
+}
+
 .btn--secondary:active,
 .btn--secondary[aria-selected='true'] {
   color: var(--gold);
@@ -241,6 +247,53 @@
 
 .icon--forward {
   background-image: url('/assets/png/retina/ui/controls/icon_forward.png');
+}
+
+.icon--minus {
+  background-image: url('/assets/png/retina/ui/controls/icon_minus.png');
+}
+
+.icon--plus {
+  background-image: url('/assets/png/retina/ui/controls/icon_plus.png');
+}
+
+.btn-round:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+/* ---------- Stepper ---------- */
+
+.stepper {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+
+.stepper__label {
+  font-size: 0.9rem;
+  color: #c9bfa6;
+}
+
+.stepper__controls {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.stepper__button {
+  --size: 40px;
+}
+
+.stepper__value {
+  min-width: 5.5ch;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 1.3rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  cursor: default;
 }
 
 /* ---------- Dialogs ---------- */

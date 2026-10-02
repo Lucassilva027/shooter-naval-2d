@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import type { GameOptions } from '@/config/gameConfig';
 import { audio } from '@/game/audio/AudioManager';
 import type { MatchResult } from '@/game/matchResult';
+import { loadOptions, resetOptions, saveOptions } from '@/storage/options';
 import { loadProfile, saveNickname, type Profile } from '@/storage/profile';
 import { loadLastResult, recordCompletedMatch, type CompletedMatch } from '@/storage/results';
 import { RotateNotice } from '@/ui/components/RotateNotice';
@@ -21,6 +23,7 @@ export function App() {
   const [screen, setScreen] = useState<Screen>({ name: 'menu' });
   const [profile, setProfile] = useState<Profile | null>(loadProfile);
   const [lastResult, setLastResult] = useState<MatchResult | null>(loadLastResult);
+  const [options, setOptions] = useState<GameOptions>(loadOptions);
 
   const play = () => {
     audio.unlock();
@@ -46,11 +49,22 @@ export function App() {
   function renderScreen() {
     switch (screen.name) {
       case 'match':
-        return <MatchScreen key={screen.id} onExit={toMenu} onFinish={finishMatch} />;
+        return (
+          <MatchScreen key={screen.id} options={options} onExit={toMenu} onFinish={finishMatch} />
+        );
       case 'result':
         return <ResultScreen completed={screen.completed} onPlayAgain={play} onMenu={toMenu} />;
       case 'options':
-        return <OptionsScreen profile={profile} onNickname={changeNickname} onBack={toMenu} />;
+        return (
+          <OptionsScreen
+            options={options}
+            onOptionsChange={(next) => setOptions(saveOptions(next))}
+            onResetOptions={() => setOptions(resetOptions())}
+            profile={profile}
+            onNickname={changeNickname}
+            onBack={toMenu}
+          />
+        );
       case 'records':
         return (
           <RecordsScreen
