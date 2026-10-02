@@ -145,6 +145,11 @@ docs/
 
 #### ✈️ Deploy de segurança na Vercel (fim do Dia 1)
 
+- [x] `vercel.json`: framework Vite, `npm ci` + `npm run build` → `dist`; cache imutável em `/static/*`, 1 dia em `/assets/*`, `no-cache` em `index.html` e `mockServiceWorker.js`; cabeçalhos de segurança básicos
+- [x] Build de produção testado localmente com `vite preview` (partida inicia, sem erros nem 404)
+- [ ] Deploy de produção (feito pelo usuário)
+- [ ] CSP: adiar até a fase 9 (MSW + PixiJS podem exigir ajustes de `script-src`/`worker-src`)
+
 ### Dia 2
 
 #### 9. Ranking e Histórico
