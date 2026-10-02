@@ -36,7 +36,9 @@ export function shipOverlapsCircle(ship: Ship, circle: Circle): boolean {
 }
 
 export function shipOverlapsIsland(ship: Ship, island: Island): boolean {
-  if (!circlesOverlap(ship.x, ship.y, ship.boundingRadius, island.x, island.y, island.boundingRadius)) {
+  if (
+    !circlesOverlap(ship.x, ship.y, ship.boundingRadius, island.x, island.y, island.boundingRadius)
+  ) {
     return false;
   }
   return island.colliders.some((collider) => shipOverlapsCircle(ship, collider));
@@ -48,7 +50,9 @@ export function shipOverlapsIsland(ship: Ship, island: Island): boolean {
  * slide along. Returns true when a collision was resolved.
  */
 export function resolveShipVsIsland(ship: Ship, island: Island): boolean {
-  if (!circlesOverlap(ship.x, ship.y, ship.boundingRadius, island.x, island.y, island.boundingRadius)) {
+  if (
+    !circlesOverlap(ship.x, ship.y, ship.boundingRadius, island.x, island.y, island.boundingRadius)
+  ) {
     return false;
   }
 

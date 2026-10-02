@@ -5,6 +5,7 @@ import type { HullCircle } from '@/config/gameConfig';
  * rotation 0 points along +x and positive values turn clockwise on screen (y grows down).
  */
 export interface Ship {
+  readonly id: number;
   x: number;
   y: number;
   rotation: number;
@@ -22,6 +23,7 @@ export interface Ship {
 }
 
 export interface ShipSpawn {
+  readonly id: number;
   readonly x: number;
   readonly y: number;
   readonly rotation: number;
@@ -33,6 +35,7 @@ export interface ShipSpawn {
 export function createShip(spawn: ShipSpawn): Ship {
   if (spawn.hull.length === 0) throw new RangeError('A ship needs at least one hull circle');
   return {
+    id: spawn.id,
     x: spawn.x,
     y: spawn.y,
     rotation: spawn.rotation,

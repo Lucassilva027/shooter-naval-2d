@@ -5,7 +5,9 @@ const isCI = Boolean(process.env.CI);
 
 /** Headless Chromium falls back to software WebGL, which is several times slower. */
 const gpuArgs =
-  process.platform === 'win32' ? ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] : [];
+  process.platform === 'win32'
+    ? ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist']
+    : [];
 
 export default defineConfig({
   testDir: './tests',

@@ -8,6 +8,11 @@ export interface GameTextures {
   readonly ships: Readonly<Record<ShipSkin, readonly Texture[]>>;
   readonly water: Texture;
   readonly islands: Readonly<Record<IslandArt, Texture>>;
+  readonly cannonBall: Texture;
+  /** Ordered from largest to smallest. */
+  readonly explosions: readonly Texture[];
+  readonly flames: readonly Texture[];
+  readonly debris: readonly Texture[];
 }
 
 /** Base hull index per skin in the ships atlas (ship_1..ship_6 are the six colours). */
@@ -86,6 +91,10 @@ export async function loadGameTextures(
       },
       water: loaded[ALIAS.water] as Texture,
       islands: islandTextures(loaded[ALIAS.tiles] as Texture),
+      cannonBall: frame(sheet, 'cannon_ball'),
+      explosions: ['explosion_1', 'explosion_2', 'explosion_3'].map((name) => frame(sheet, name)),
+      flames: ['fire_1', 'fire_2'].map((name) => frame(sheet, name)),
+      debris: ['wood_1', 'wood_2', 'wood_3', 'wood_4'].map((name) => frame(sheet, name)),
     };
   } catch (error) {
     throw new AssetLoadError('Could not load the game assets.', { cause: error });
@@ -107,8 +116,13 @@ function frame(sheet: Spritesheet, name: string): Texture {
 function islandTextures(tiles: Texture): Record<IslandArt, Texture> {
   let textures = islandTextureCache.get(tiles);
   if (!textures) {
-    const cut = (art: IslandArt) => new Texture({ source: tiles.source, frame: ISLAND_FRAMES[art] });
-    textures = { sandIsland: cut('sandIsland'), grassIsland: cut('grassIsland'), rock: cut('rock') };
+    const cut = (art: IslandArt) =>
+      new Texture({ source: tiles.source, frame: ISLAND_FRAMES[art] });
+    textures = {
+      sandIsland: cut('sandIsland'),
+      grassIsland: cut('grassIsland'),
+      rock: cut('rock'),
+    };
     islandTextureCache.set(tiles, textures);
   }
   return textures;

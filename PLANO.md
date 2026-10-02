@@ -62,6 +62,7 @@ docs/
 ### Dia 1
 
 #### 1. Setup do projeto
+
 - [x] Vite + React + TypeScript strict
 - [x] PixiJS v8, ESLint, Prettier, Vitest, Playwright, MSW (`mockServiceWorker.js` em `public/`)
 - [x] Scripts: `dev`, `build`, `preview`, `lint`, `typecheck`, `test`, `test:e2e`
@@ -69,6 +70,7 @@ docs/
 - [ ] `ASSETS.md` com origem e licença dos assets
 
 #### 2. Game loop com delta time
+
 - [x] `FixedStepLoop` (passo fixo, acumulador, clamp) + interpolação no render
 - [x] `KeyboardInput` (por `event.code`, só captura com gameplay ativa) + `mergeInputs` para teclado + toque
 - [x] Movimento com inércia (acelera, freia gradual, drag) e rotação; contenção nos limites da arena
@@ -78,6 +80,7 @@ docs/
 - [x] Testes: 14 unitários (Vitest) + 2 E2E (falha/nova tentativa de assets, 5 ciclos sem vazar canvas)
 
 #### 3. Colisões
+
 - [x] Limites da arena (considerando o casco inteiro e a orientação)
 - [x] 3 ilhas em layout fixo proporcional (grama, areia, rocha), colisão por união de círculos
 - [x] Casco do navio como 3 círculos (proa, meio, popa); deslizamento pela costa sem "grudar"
@@ -86,23 +89,32 @@ docs/
 - [ ] Projéteis × ilhas (fase 4)
 
 #### 4. Disparos
-- [ ] Frontal (1 projétil) e lateral (3 paralelos, esquerda e direita)
-- [ ] Cooldown por arma, vida útil, dano aplicado uma única vez
+
+- [x] Frontal (1 projétil) e lateral (3 paralelos, esquerda e direita), tiro automático ao segurar
+- [x] Cooldown por arma (laterais independentes por lado), vida útil, dano aplicado uma única vez
+- [x] Projéteis param em ilhas, somem ao sair da arena, splash ao expirar
+- [x] Fila de eventos da simulação → efeitos (pool de sprites) e áudio (Web Audio, mudo persistido)
+- [x] Estágios de dano do casco por vida + flash vermelho ao ser atingido
+- [x] 11 testes unitários de armas/projéteis (inclui mesma cadência a 30 e 144 fps)
 
 #### 5. Inimigos
+
 - [ ] Chaser (persegue, explode no impacto, não pontua ao se autodestruir)
 - [ ] Shooter (aproxima, dispara no alcance)
 - [ ] Spawner com intervalo configurável, pontos livres e longe do jogador
 
 #### 6. HUD
+
 - [ ] Vida, pontos, tempo (semântico, `aria-live` com moderação)
 - [ ] Health bars sobre navios, deterioração visual
 
 #### 7. Telas principais
+
 - [ ] Menu (Play, Options, instruções, abas Ranking/Histórico)
 - [ ] Partida, Resultado (pontos, tempo, motivo, status do registro, Play Again/Main Menu)
 
 #### 8. Options
+
 - [ ] Duração (60–180 s), intervalo de spawn (limites documentados)
 - [ ] Validação + persistência em localStorage
 
@@ -111,6 +123,7 @@ docs/
 ### Dia 2
 
 #### 9. Ranking e Histórico
+
 - [ ] Contratos tipados + cliente Axios (timeout)
 - [ ] MSW (handlers, fixtures, db persistido, funciona no build)
 - [ ] TanStack Query: paginação, cache, invalidação, retries, `placeholderData`
@@ -119,10 +132,12 @@ docs/
 - [ ] UI de seleção/reset de cenários de rede
 
 #### 10. Pausa
+
 - [ ] Manual (tecla/botão), automática (blur, `visibilitychange`)
 - [ ] Retomada exige ação; sem acúmulo de delta/inputs
 
 #### 11. Playwright (críticos primeiro)
+
 - [ ] Instrumentação: seed, relógio controlado, leitura do estado
 - [ ] Options, partida (movimento, disparos, fim por tempo/morte), pausa
 - [ ] Ranking/histórico (vazio, erro, paginação, timeout sem duplicação, pendente após refresh)
@@ -132,10 +147,12 @@ docs/
 #### 12. Deploy final na Vercel
 
 #### 13. Documentação
+
 - [ ] README.md
 - [ ] ARCHITECTURE.md
 
 #### 14. Polishing e performance
+
 - [ ] Medir FPS, p95 do frame time, nº de entidades em partida de 3 min
 - [ ] Memória após 5 ciclos iniciar-jogar-sair
 - [ ] Evidências em `docs/perf/`
@@ -157,19 +174,19 @@ Fonte: https://github.com/junglegaming/game-developer-challenge
 
 ## Decisões tomadas
 
-| Data | Decisão | Motivo |
-| ---- | ------- | ------ |
-| 2026-10-02 | npm como gerenciador | já instalado, lockfile padrão |
-| 2026-10-02 | Jogador informa apelido na 1ª partida; `playerId` gerado e salvo localmente | identificação legível no ranking |
-| 2026-10-02 | Mobile somente em paisagem, com aviso para girar | arena horizontal sem cortes |
-| 2026-10-02 | CSS puro/CSS Modules + sprites do `ui_sheet` | sem dependência extra |
-| 2026-10-02 | Vitest para lógica pura do jogo + Playwright para E2E | feedback rápido nos sistemas |
-| 2026-10-02 | Git local; GitHub MCP será autenticado manualmente depois | — |
-| 2026-10-02 | PixiJS controlado imperativamente (sem `@pixi/react`) | controle total de ciclo de vida/Strict Mode |
-| 2026-10-02 | Atlas XML dos navios convertido para JSON do Pixi (`npm run assets:atlas`) | Pixi não lê formato Starling XML |
-| 2026-10-02 | Bundle do Vite em `dist/static/` | evitar colisão com `public/assets/` |
-| 2026-10-02 | SVG/SWF movidos para `assets-src/vector` (fora do deploy) | ~3 MB não usados em runtime |
-| 2026-10-02 | TypeScript 6: `@types/web` no lugar da lib `dom` | recomendação da skill oficial do PixiJS |
+| Data       | Decisão                                                                     | Motivo                                      |
+| ---------- | --------------------------------------------------------------------------- | ------------------------------------------- |
+| 2026-10-02 | npm como gerenciador                                                        | já instalado, lockfile padrão               |
+| 2026-10-02 | Jogador informa apelido na 1ª partida; `playerId` gerado e salvo localmente | identificação legível no ranking            |
+| 2026-10-02 | Mobile somente em paisagem, com aviso para girar                            | arena horizontal sem cortes                 |
+| 2026-10-02 | CSS puro/CSS Modules + sprites do `ui_sheet`                                | sem dependência extra                       |
+| 2026-10-02 | Vitest para lógica pura do jogo + Playwright para E2E                       | feedback rápido nos sistemas                |
+| 2026-10-02 | Git local; GitHub MCP será autenticado manualmente depois                   | —                                           |
+| 2026-10-02 | PixiJS controlado imperativamente (sem `@pixi/react`)                       | controle total de ciclo de vida/Strict Mode |
+| 2026-10-02 | Atlas XML dos navios convertido para JSON do Pixi (`npm run assets:atlas`)  | Pixi não lê formato Starling XML            |
+| 2026-10-02 | Bundle do Vite em `dist/static/`                                            | evitar colisão com `public/assets/`         |
+| 2026-10-02 | SVG/SWF movidos para `assets-src/vector` (fora do deploy)                   | ~3 MB não usados em runtime                 |
+| 2026-10-02 | TypeScript 6: `@types/web` no lugar da lib `dom`                            | recomendação da skill oficial do PixiJS     |
 
 | 2026-10-02 | Game loop com passo fixo 1/60 s + acumulador + limite de delta | determinismo para testes com seed |
 | 2026-10-02 | Movimento com inércia: W/↑ acelera, S/↓ freia gradualmente (mesma curva da aceleração) | sensação de barco |
@@ -183,6 +200,11 @@ Fonte: https://github.com/junglegaming/game-developer-challenge
 | 2026-10-02 | Ilhas: layout fixo, 3 ilhas, união de círculos (quadrado arredondado = 1 central + 4 cantos) | arte quadrada; círculo único deixava os cantos de fora |
 | 2026-10-02 | Navio: 3 círculos ao longo do casco (config `player.hull`) | casco alongado; círculo único deixava proa/popa atravessarem |
 | 2026-10-02 | Perda de velocidade no impacto = teto `maxSpeed × (1 − componente frontal)` | multiplicar por passo fazia o navio travar ao deslizar |
+
+| 2026-10-02 | Tiros laterais em **K** (esquerda) e **L** (direita); Q/E removidos | pedido do usuário |
+| 2026-10-02 | Segurar tiro = automático no cooldown; laterais com cooldown por lado | — |
+| 2026-10-02 | Frontal 20 dano/0,4 s; lateral 3×15/1,5 s; bala 420 u/s, 1,2 s, raio 6 (desenhada no tamanho da colisão) | proposta aceita; raio 5→6 por legibilidade |
+| 2026-10-02 | Áudio desde já, Web Audio, falhas de áudio nunca bloqueiam o jogo | — |
 
 Versões: React 19.3, PixiJS 8.22, TypeScript 6.0, Vite 8.3, TanStack Query 5.104, Axios 1.20, MSW 2.15, Playwright 1.63, Vitest 5.0.
 

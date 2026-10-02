@@ -1,12 +1,6 @@
 /** Continuous actions sampled every simulation step. */
 export type HeldAction =
-  | 'forward'
-  | 'brake'
-  | 'turnLeft'
-  | 'turnRight'
-  | 'fireFront'
-  | 'fireLeft'
-  | 'fireRight';
+  'forward' | 'brake' | 'turnLeft' | 'turnRight' | 'fireFront' | 'fireLeft' | 'fireRight';
 
 /** One-shot commands handled outside the simulation step. */
 export type InputCommand = 'pause';

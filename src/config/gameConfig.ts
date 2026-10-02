@@ -59,11 +59,40 @@ export interface HullCircle {
   readonly radius: number;
 }
 
+export interface ProjectileConfig {
+  readonly speed: number;
+  /** Range is `speed * lifetimeSeconds`. */
+  readonly lifetimeSeconds: number;
+  readonly damage: number;
+  readonly radius: number;
+}
+
+export interface FrontWeaponConfig {
+  readonly cooldownSeconds: number;
+  /** Distance ahead of the ship centre where the shot spawns. */
+  readonly muzzleOffset: number;
+  readonly projectile: ProjectileConfig;
+}
+
+export interface BroadsideWeaponConfig {
+  /** Each side has its own cooldown of this length. */
+  readonly cooldownSeconds: number;
+  /** Bow-stern positions of the parallel shots, relative to the ship centre. */
+  readonly shotOffsets: readonly number[];
+  /** Distance to the side of the ship centre where the shots spawn. */
+  readonly muzzleOffset: number;
+  readonly projectile: ProjectileConfig;
+}
+
 export interface PlayerConfig {
   readonly maxHealth: number;
   /** Circles approximating the elongated hull, used for every collision test. */
   readonly hull: readonly HullCircle[];
   readonly motion: ShipMotionConfig;
+  readonly weapons: {
+    readonly front: FrontWeaponConfig;
+    readonly broadside: BroadsideWeaponConfig;
+  };
 }
 
 export interface GameConfig {
@@ -105,6 +134,19 @@ export const defaultGameConfig: GameConfig = {
       brakeDeceleration: 160,
       drag: 45,
       turnSpeed: Math.PI * 0.85,
+    },
+    weapons: {
+      front: {
+        cooldownSeconds: 0.4,
+        muzzleOffset: 58,
+        projectile: { speed: 420, lifetimeSeconds: 1.2, damage: 20, radius: 6 },
+      },
+      broadside: {
+        cooldownSeconds: 1.5,
+        shotOffsets: [26, 0, -26],
+        muzzleOffset: 32,
+        projectile: { speed: 420, lifetimeSeconds: 1.2, damage: 15, radius: 6 },
+      },
     },
   },
 };

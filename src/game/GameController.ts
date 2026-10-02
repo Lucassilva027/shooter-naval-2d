@@ -1,6 +1,8 @@
 import { Application, type Ticker } from 'pixi.js';
 import type { GameConfig } from '@/config/gameConfig';
 import { loadGameTextures } from './assets/gameAssets';
+import { audio } from './audio/AudioManager';
+import { playEventSounds } from './audio/gameSounds';
 import type { GameStore } from './bridge/gameStore';
 import { FixedStepLoop } from './core/FixedStepLoop';
 import { GameSimulation } from './core/GameSimulation';
@@ -74,6 +76,7 @@ export class GameController {
       this.keyboard.attach();
       this.keyboard.setEnabled(true);
       app.ticker.add(this.tick);
+      audio.startLoop('oceanLoop', 0.25);
       store.publish({ phase: 'running', loadProgress: 100 });
     } catch (error) {
       if (this.destroyed) return;
@@ -90,6 +93,7 @@ export class GameController {
     this.destroyed = true;
 
     this.keyboard.detach();
+    audio.stopAllLoops();
     this.app?.ticker.remove(this.tick);
     this.renderer?.destroy();
     if (this.app) destroyApplication(this.app);
@@ -104,10 +108,17 @@ export class GameController {
     const renderer = this.renderer;
     if (!simulation || !renderer) return;
 
-    const alpha = this.loop.advance(ticker.deltaMS / 1000, (dt) => {
+    const frameSeconds = ticker.deltaMS / 1000;
+    const alpha = this.loop.advance(frameSeconds, (dt) => {
       simulation.step(dt, this.keyboard.read());
     });
-    renderer.render(alpha);
+
+    const events = simulation.drainEvents();
+    if (events.length > 0) {
+      renderer.handleEvents(events);
+      playEventSounds(events);
+    }
+    renderer.render(alpha, frameSeconds);
   };
 
   private readonly handleCommand = (command: InputCommand): void => {

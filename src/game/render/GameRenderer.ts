@@ -1,13 +1,18 @@
-import { Container, Graphics, TilingSprite, type Application } from 'pixi.js';
+import { Container, Graphics, TilingSprite, type Application, type Texture } from 'pixi.js';
 import type { GameTextures } from '../assets/gameAssets';
+import type { GameEvent } from '../core/events';
 import type { GameSimulation } from '../core/GameSimulation';
+import { EffectsLayer } from './EffectsLayer';
 import { createIslandSprite } from './IslandView';
+import { ProjectileLayer } from './ProjectileLayer';
 import { ShipView } from './ShipView';
 
 export interface GameRendererOptions {
   /** Draws collision circles on top of the scene. */
   readonly showColliders: boolean;
 }
+
+const SAND_TINT = 0xe8c98f;
 
 /**
  * Read-only view of the simulation. It never mutates game state; it only mirrors it into
@@ -17,11 +22,14 @@ export class GameRenderer {
   /** World-space root; scaled and centred inside the canvas. */
   readonly world = new Container();
   private readonly playerView: ShipView;
+  private readonly projectiles: ProjectileLayer;
+  private readonly effects = new EffectsLayer();
+  private readonly splashRing: Texture;
   private readonly colliders: Graphics | null;
 
   constructor(
     private readonly app: Application,
-    textures: GameTextures,
+    private readonly textures: GameTextures,
     private readonly simulation: GameSimulation,
     options: GameRendererOptions,
   ) {
@@ -36,10 +44,19 @@ export class GameRenderer {
     for (const island of simulation.islands) {
       islands.addChild(createIslandSprite(island, textures.islands[island.art]));
     }
-    this.world.addChild(islands);
 
     this.playerView = new ShipView(textures.ships.player);
-    this.world.addChild(this.playerView.container);
+    this.projectiles = new ProjectileLayer(textures.cannonBall);
+    this.world.addChild(
+      islands,
+      this.playerView.container,
+      this.projectiles.container,
+      this.effects.container,
+    );
+
+    const ring = new Graphics().circle(0, 0, 16).stroke({ width: 3, color: 0xffffff });
+    this.splashRing = app.renderer.generateTexture(ring);
+    ring.destroy();
 
     this.colliders = options.showColliders ? new Graphics({ label: 'colliders' }) : null;
     if (this.colliders) this.world.addChild(this.colliders);
@@ -49,14 +66,97 @@ export class GameRenderer {
     this.layout(app.screen.width, app.screen.height);
   }
 
-  render(alpha: number): void {
+  /** Turns simulation events into visual feedback. */
+  handleEvents(events: readonly GameEvent[]): void {
+    for (const event of events) {
+      if (event.type === 'shot') this.spawnMuzzleFlash(event.x, event.y, event.direction);
+      else if (event.surface === 'water') this.spawnSplash(event.x, event.y);
+      else if (event.surface === 'island') this.spawnDust(event.x, event.y);
+      else this.spawnShipHit(event.x, event.y, event.shipId);
+    }
+  }
+
+  /** `frameSeconds` is real elapsed time; cosmetic animations only. */
+  render(alpha: number, frameSeconds: number): void {
     this.playerView.sync(this.simulation.player, alpha);
+    this.playerView.update(frameSeconds);
+    this.projectiles.sync(this.simulation.projectiles, alpha);
+    this.effects.update(frameSeconds);
     if (this.colliders) this.drawColliders(this.colliders);
   }
 
   destroy(): void {
     this.app.renderer.off('resize', this.layout);
+    this.projectiles.destroy();
+    this.effects.destroy();
     this.world.destroy({ children: true });
+    this.splashRing.destroy(true);
+  }
+
+  private spawnMuzzleFlash(x: number, y: number, direction: number): void {
+    const [, medium, small] = this.textures.explosions;
+    if (small) {
+      this.effects.spawn(small, x, y, {
+        duration: 0.18,
+        fromScale: 0.55,
+        toScale: 0.95,
+        rotation: direction,
+      });
+    }
+    if (medium) {
+      this.effects.spawn(medium, x, y, {
+        duration: 0.5,
+        fromScale: 0.25,
+        toScale: 0.55,
+        fromAlpha: 0.35,
+        tint: 0x9a9a9a,
+        vx: Math.cos(direction) * 25,
+        vy: Math.sin(direction) * 25,
+      });
+    }
+  }
+
+  private spawnSplash(x: number, y: number): void {
+    this.effects.spawn(this.splashRing, x, y, {
+      duration: 0.45,
+      fromScale: 0.2,
+      toScale: 1,
+      fromAlpha: 0.9,
+    });
+  }
+
+  private spawnDust(x: number, y: number): void {
+    const small = this.textures.explosions[2];
+    if (small) {
+      this.effects.spawn(small, x, y, {
+        duration: 0.3,
+        fromScale: 0.3,
+        toScale: 0.6,
+        tint: SAND_TINT,
+      });
+    }
+  }
+
+  private spawnShipHit(x: number, y: number, shipId: number | undefined): void {
+    const medium = this.textures.explosions[1];
+    if (medium) this.effects.spawn(medium, x, y, { duration: 0.3, fromScale: 0.35, toScale: 0.7 });
+
+    for (let i = 0; i < 2; i++) {
+      const piece = this.textures.debris[Math.floor(Math.random() * this.textures.debris.length)];
+      if (!piece) continue;
+      const angle = Math.random() * Math.PI * 2;
+      this.effects.spawn(piece, x, y, {
+        duration: 0.6,
+        fromScale: 1,
+        toScale: 0.6,
+        rotation: angle,
+        vx: Math.cos(angle) * 60,
+        vy: Math.sin(angle) * 60,
+        spin: 6,
+      });
+    }
+
+    if (shipId === this.simulation.player.id) this.playerView.flash();
   }
 
   private drawColliders(graphics: Graphics): void {

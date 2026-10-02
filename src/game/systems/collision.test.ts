@@ -19,7 +19,7 @@ const LONG_HULL: readonly HullCircle[] = [
 ];
 
 function shipAt(x: number, y: number, rotation = 0, hull = ROUND_HULL) {
-  const ship = createShip({ x, y, rotation, maxHealth: 100, maxSpeed: 100, hull });
+  const ship = createShip({ id: 1, x, y, rotation, maxHealth: 100, maxSpeed: 100, hull });
   ship.speed = 100;
   return ship;
 }

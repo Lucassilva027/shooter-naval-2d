@@ -3,6 +3,7 @@ import { createMatchConfig } from '@/config/gameConfig';
 import { createGameStore } from '@/game/bridge/gameStore';
 import { GameController } from '@/game/GameController';
 import { CONTROL_LEGEND } from '@/game/input/keyboardBindings';
+import { MuteButton } from '@/ui/components/MuteButton';
 import './MatchScreen.css';
 
 interface MatchScreenProps {
@@ -55,9 +56,12 @@ export function MatchScreen({ onExit }: MatchScreenProps) {
         </div>
       )}
 
-      <button type="button" className="match__exit" onClick={onExit}>
-        Main Menu
-      </button>
+      <div className="match__toolbar">
+        <MuteButton />
+        <button type="button" onClick={onExit}>
+          Main Menu
+        </button>
+      </div>
     </section>
   );
 }

@@ -11,8 +11,8 @@ export const HELD_KEY_BINDINGS: Readonly<Record<string, HeldAction>> = {
   KeyD: 'turnRight',
   ArrowRight: 'turnRight',
   Space: 'fireFront',
-  KeyQ: 'fireLeft',
-  KeyE: 'fireRight',
+  KeyK: 'fireLeft',
+  KeyL: 'fireRight',
 };
 
 export const COMMAND_KEY_BINDINGS: Readonly<Record<string, InputCommand>> = {
@@ -26,6 +26,6 @@ export const CONTROL_LEGEND: readonly { readonly keys: string; readonly action: 
   { keys: 'S / ↓', action: 'Brake' },
   { keys: 'A D / ← →', action: 'Turn' },
   { keys: 'Space', action: 'Front cannon' },
-  { keys: 'Q / E', action: 'Left / right broadside' },
+  { keys: 'K / L', action: 'Left / right broadside' },
   { keys: 'P / Esc', action: 'Pause' },
 ];

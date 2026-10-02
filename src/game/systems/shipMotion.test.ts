@@ -16,6 +16,7 @@ const THROTTLE: MotionControls = { throttle: true, brake: false, turn: 0 };
 
 function newShip() {
   return createShip({
+    id: 1,
     x: 500,
     y: 500,
     rotation: 0,

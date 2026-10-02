@@ -43,10 +43,12 @@
   color: #ffd166;
 }
 
-.match__exit {
+.match__toolbar {
   position: absolute;
   top: 12px;
   right: 12px;
+  display: flex;
+  gap: 8px;
 }
 
 .match__overlay {
