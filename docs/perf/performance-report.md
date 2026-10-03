@@ -21,7 +21,7 @@ enemy present, after five simulated seconds in an E2E-controlled match.
 | --- | ---: |
 | Mean callback interval | 5.65 ms |
 | 95th-percentile callback interval | 16.70 ms |
-| Mean inverse interval | 177.06 callbacks/s |
+| Mean inverse interval | 177.04 callbacks/s |
 
 The inverse-interval value is not the display refresh rate. The browser is
 headless and callback cadence can be bursty; the p95 is the more useful frame
@@ -43,10 +43,10 @@ and exposes sustained entity load; this is not a gameplay balance change.
 | Measurement | Result |
 | --- | ---: |
 | Simulated duration | 180 s |
-| Peak enemy ships | 10 |
-| Peak projectiles | 4 |
-| Peak gameplay entities (player + enemies + projectiles) | 15 |
-| Simulation runtime in Vitest | 330 ms |
+| Peak enemy ships | 8 |
+| Peak projectiles | 5 |
+| Peak gameplay entities (player + enemies + projectiles) | 14 |
+| Simulation runtime in Vitest | 115 ms |
 
 The runtime value covers the TypeScript simulation loop only; it excludes
 PixiJS rendering, audio, browser scheduling, and GPU work.

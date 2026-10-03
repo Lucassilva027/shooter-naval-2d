@@ -12,7 +12,7 @@ const { chaser, shooter, spawn } = defaultGameConfig.enemies;
 /** Open sea and no automatic spawns, so each test places its own enemies. */
 const SANDBOX: GameConfig = {
   ...defaultGameConfig,
-  arena: { ...defaultGameConfig.arena, islands: [] },
+  arena: { ...defaultGameConfig.arena, layouts: [[]] },
   enemies: {
     ...defaultGameConfig.enemies,
     spawn: { ...spawn, initialDelaySeconds: 1e6 },
@@ -47,6 +47,14 @@ const destroyed = (events: readonly GameEvent[]) =>
   );
 
 describe('chaser', () => {
+  it('leaves more room to react in the default match settings', () => {
+    expect(chaser.motion.maxSpeed).toBeLessThan(defaultGameConfig.player.motion.maxSpeed);
+    expect(chaser.contactDamage).toBe(20);
+    expect(spawn.intervalSeconds).toBe(4);
+    expect(spawn.initialDelaySeconds).toBe(4);
+    expect(spawn.maxAlive).toBe(8);
+  });
+
   it('closes in and rams the player: damage applied, chaser destroyed, no score', () => {
     const sim = new GameSimulation(SANDBOX, ARENA);
     place(sim, 'chaser', sim.player.x + 400, sim.player.y, Math.PI);
@@ -71,7 +79,7 @@ describe('chaser', () => {
       ...SANDBOX,
       arena: {
         ...SANDBOX.arena,
-        islands: [{ art: 'grassIsland', x: 0.5, y: 0.5, radius: 100 }],
+        layouts: [[{ art: 'grassIsland', x: 0.5, y: 0.5, radius: 100 }]],
         playerSpawn: { x: 0.2, y: 0.5 },
       },
     };
@@ -115,7 +123,7 @@ describe('shooter', () => {
       ...SANDBOX,
       arena: {
         ...SANDBOX.arena,
-        islands: [{ art: 'rock', x: 0.5, y: 0.5, radius: 40 }],
+        layouts: [[{ art: 'rock', x: 0.5, y: 0.5, radius: 40 }]],
         playerSpawn: { x: 0.4, y: 0.5 },
       },
     };

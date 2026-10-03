@@ -1,7 +1,7 @@
 import type { EnemyKind, GameConfig, ProjectileConfig } from '@/config/gameConfig';
 import type { InputSnapshot } from '../input/actions';
 import { createEnemy, type Enemy } from '../entities/enemy';
-import { placeIslands, type Island } from '../entities/island';
+import { placeIslands, selectIslandLayout, type Island } from '../entities/island';
 import { createProjectile, type Projectile } from '../entities/projectile';
 import { createShip, hullBoundingRadius, rememberPreviousState, type Ship } from '../entities/ship';
 import {
@@ -65,7 +65,7 @@ export class GameSimulation {
     readonly seed = 1,
   ) {
     this.random = createRandom(seed);
-    this.islands = placeIslands(config.arena.islands, arena);
+    this.islands = placeIslands(selectIslandLayout(config.arena.layouts, seed), arena);
     this.player = createShip({
       id: PLAYER_ID,
       x: config.arena.playerSpawn.x * arena.width,

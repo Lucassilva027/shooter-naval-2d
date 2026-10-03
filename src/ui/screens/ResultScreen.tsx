@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { CompletedMatch } from '@/storage/results';
 import type { MatchSubmissionStatus } from '@/api/pendingSubmissions';
 import { Scene } from '@/ui/components/Scene';
@@ -20,11 +21,18 @@ export function ResultScreen({
 }: ResultScreenProps) {
   const { result, previousBest, isNewBest } = completed;
   const title = result.outcome === 'destroyed' ? 'Ship sunk' : 'Battle complete';
+  const titleRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    titleRef.current?.focus();
+  }, []);
 
   return (
     <Scene label="Battle result">
       <section className="panel" aria-labelledby="result-title">
-        <h1 id="result-title">{title}</h1>
+        <h1 ref={titleRef} id="result-title" className="result__title" tabIndex={-1}>
+          {title}
+        </h1>
         <p className="result__score">
           <span data-testid="result-score">{result.score}</span>
           <span className="visually-hidden"> points</span>
@@ -63,7 +71,7 @@ export function ResultScreen({
             Retry submission
           </button>
         )}
-        <button type="button" className="btn btn--primary" onClick={onPlayAgain} autoFocus>
+        <button type="button" className="btn btn--primary" onClick={onPlayAgain}>
           Play again
         </button>
         <button type="button" className="btn btn--primary" onClick={onMenu}>

@@ -51,7 +51,7 @@ export function Stepper({ label, value, limit, unit, spokenUnit, onChange, testI
       <div className="stepper__controls">
         <button
           type="button"
-          className="btn-round stepper__button"
+          className="btn btn--secondary stepper__button"
           tabIndex={-1}
           aria-label={`Decrease ${label}`}
           disabled={value <= limit.min}
@@ -75,7 +75,7 @@ export function Stepper({ label, value, limit, unit, spokenUnit, onChange, testI
         </div>
         <button
           type="button"
-          className="btn-round stepper__button"
+          className="btn btn--secondary stepper__button"
           tabIndex={-1}
           aria-label={`Increase ${label}`}
           disabled={value >= limit.max}

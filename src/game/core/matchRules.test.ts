@@ -13,7 +13,7 @@ function sandbox(durationSeconds: number): GameConfig {
   return {
     ...defaultGameConfig,
     match: { ...defaultGameConfig.match, durationSeconds },
-    arena: { ...defaultGameConfig.arena, islands: [] },
+    arena: { ...defaultGameConfig.arena, layouts: [[]] },
     enemies: { ...defaultGameConfig.enemies, spawn: { ...spawn, initialDelaySeconds: 1e6 } },
   };
 }

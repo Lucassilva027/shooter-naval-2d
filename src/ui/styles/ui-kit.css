@@ -282,7 +282,20 @@
 }
 
 .stepper__button {
-  --size: 40px;
+  --btn-height: 40px;
+  min-width: 78px;
+  width: 78px;
+  padding: 0;
+  font-size: 0;
+}
+
+.stepper__button .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.result__title:focus-visible {
+  outline: none;
 }
 
 .stepper__value {

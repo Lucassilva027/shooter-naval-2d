@@ -38,6 +38,8 @@ arena, while a separate TypeScript simulation owns game state and rules.
 The loop accumulates frame time, advances simulation in fixed steps, clamps long
 frame deltas, and renders with interpolation. Tests can supply a fixed seed and,
 in E2E mode only, advance a manual clock and read a snapshot of simulation state.
+The seed selects one of three island formations from the supplied tileset. The
+same seed reproduces both the layout and enemy spawn sequence.
 
 ## UI and persistence
 

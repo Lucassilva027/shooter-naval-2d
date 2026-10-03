@@ -20,7 +20,7 @@ test.describe('options', () => {
     await expect(durationStepper(page)).toHaveAttribute('aria-valuenow', '120');
     await expect(durationStepper(page)).toHaveAttribute('aria-valuemin', '60');
     await expect(durationStepper(page)).toHaveAttribute('aria-valuemax', '180');
-    await expect(spawnStepper(page)).toHaveAttribute('aria-valuenow', '3');
+    await expect(spawnStepper(page)).toHaveAttribute('aria-valuenow', '4');
     await expect(page.getByRole('button', { name: 'Reset to defaults' })).toBeDisabled();
   });
 
@@ -28,19 +28,28 @@ test.describe('options', () => {
     await page.goto('/');
     await openOptions(page);
 
-    await page.getByRole('button', { name: 'Decrease Game session time' }).click();
-    await page.getByRole('button', { name: 'Decrease Game session time' }).click();
+    const decreaseDuration = page.getByRole('button', { name: 'Decrease Game session time' });
+    await expect(decreaseDuration).toHaveClass(/btn--secondary/);
+    await decreaseDuration.hover();
+    const resetButton = page.getByRole('button', { name: 'Reset to defaults' });
+    await expect(decreaseDuration).toHaveCSS(
+      'border-image-source',
+      await resetButton.evaluate((button) => getComputedStyle(button).borderImageSource),
+    );
+
+    await decreaseDuration.click();
+    await decreaseDuration.click();
     await expect(durationStepper(page)).toHaveText('100 s');
 
     await spawnStepper(page).focus();
     await page.keyboard.press('ArrowUp');
     await page.keyboard.press('ArrowUp');
-    await expect(spawnStepper(page)).toHaveAttribute('aria-valuetext', '5 seconds');
+    await expect(spawnStepper(page)).toHaveAttribute('aria-valuetext', '6 seconds');
 
     await page.reload();
     await openOptions(page);
     await expect(durationStepper(page)).toHaveAttribute('aria-valuenow', '100');
-    await expect(spawnStepper(page)).toHaveAttribute('aria-valuenow', '5');
+    await expect(spawnStepper(page)).toHaveAttribute('aria-valuenow', '6');
   });
 
   test('stops at the limits and disables the matching button', async ({ page }) => {

@@ -40,8 +40,10 @@ designed for landscape orientation.
 ## Features
 
 - Fixed-step deterministic game simulation, seeded with `?seed=<number>` for
-  repeatable testing.
-- Configurable match duration and enemy spawn interval.
+  repeatable testing; each seed also selects one of three island layouts.
+- Configurable match duration and enemy spawn interval. Defaults are 120 seconds
+  and 4 seconds between spawns; Chasers move at 130 units/s, deal 20 contact
+  damage, and are limited to 8 active enemies.
 - Local captain profile, options, latest result, and per-configuration personal
   best score.
 - Paginated ranking and match history screens, with retryable, idempotent match

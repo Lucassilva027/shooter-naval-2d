@@ -10,7 +10,7 @@ const ARENA = { width: 1600, height: 900 };
 /** No islands, so projectiles fly freely unless a test adds obstacles. */
 const OPEN_SEA: GameConfig = {
   ...defaultGameConfig,
-  arena: { ...defaultGameConfig.arena, islands: [] },
+  arena: { ...defaultGameConfig.arena, layouts: [[]] },
 };
 const { front, broadside } = defaultGameConfig.player.weapons;
 

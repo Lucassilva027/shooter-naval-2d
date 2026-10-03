@@ -40,6 +40,8 @@ test.describe('visual regression', () => {
     await advanceGameTime(page, 20_000);
 
     await expect(page.getByRole('heading', { name: 'Ship sunk' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Ship sunk' })).toBeFocused();
+    await expect(page.getByRole('button', { name: 'Play again' })).not.toBeFocused();
     await expect(page.getByTestId('result-score')).toBeVisible();
     await expect(page).toHaveScreenshot('match-result.png', screenshotOptions);
   });

@@ -19,6 +19,17 @@ export interface Island {
   readonly colliders: readonly Circle[];
 }
 
+export function selectIslandLayout(
+  layouts: readonly (readonly IslandPreset[])[],
+  seed: number,
+): readonly IslandPreset[] {
+  if (layouts.length === 0) throw new RangeError('At least one island layout is required.');
+  const index = ((seed >>> 0) % layouts.length + layouts.length - 1) % layouts.length;
+  const layout = layouts[index];
+  if (!layout) throw new Error('Could not select an island layout for the match seed.');
+  return layout;
+}
+
 /** Collider layout per artwork, in units of the island radius. */
 const SHAPES: Readonly<Record<IslandArt, readonly Circle[]>> = {
   // Rounded squares: a central circle plus one circle filling each corner.

@@ -13,7 +13,7 @@ const config = defaultGameConfig.enemies.spawn;
 function context(): SpawnContext {
   return {
     arena: ARENA,
-    islands: placeIslands(defaultGameConfig.arena.islands, ARENA),
+    islands: placeIslands(defaultGameConfig.arena.layouts[0] ?? [], ARENA),
     player: createShip({
       id: 0,
       x: 800,
@@ -54,7 +54,9 @@ describe('spawner', () => {
   });
 
   it('opens with one enemy of each kind', () => {
-    const kinds = runSpawner(config, 7).map((s) => s.kind);
+    const kinds = runSpawner(config, config.initialDelaySeconds + config.intervalSeconds).map(
+      (s) => s.kind,
+    );
     expect(kinds.slice(0, 2)).toEqual(['chaser', 'shooter']);
   });
 

@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test';
 import {
   advanceGameTime,
+  seedGameOptions,
   seedProfile,
+  setPlayerHealth,
   startMatch,
 } from './helpers';
 
@@ -121,6 +123,8 @@ test('retries a timed-out submission with the same id without recording a duplic
   test.setTimeout(45_000);
   await seedProfile(page, 'Retry Captain', 'timeout-retry-player');
   await page.reload();
+  await seedGameOptions(page, { matchDurationSeconds: 60, enemySpawnSeconds: 15 });
+  await page.reload();
   await page.getByRole('button', { name: 'Ranking' }).click();
   await page
     .getByRole('combobox', { name: 'Network scenario' })
@@ -128,8 +132,9 @@ test('retries a timed-out submission with the same id without recording a duplic
   await page.getByRole('button', { name: 'Back' }).click();
 
   await startMatch(page);
-  await advanceGameTime(page, 20_000);
-  await expect(page.getByRole('heading', { name: 'Ship sunk' })).toBeVisible();
+  await setPlayerHealth(page, 10_000);
+  await advanceGameTime(page, 62_000);
+  await expect(page.getByRole('heading', { name: 'Battle complete' })).toBeVisible();
 
   let timedOut = false;
   page.on('console', (message) => {
@@ -181,7 +186,7 @@ test('retries a timed-out submission with the same id without recording a duplic
     .toBe(0);
 
   const history = page.getByRole('tabpanel', { name: 'Match history' });
-  await expect(history.getByRole('row', { name: /Ship sunk 0/ })).toHaveCount(1);
+  await expect(history.getByRole('row', { name: /Time up 0/ })).toHaveCount(1);
   await expect(history.getByRole('row')).toHaveCount(2);
 });
 

@@ -37,7 +37,8 @@ export interface IslandPreset {
 }
 
 export interface ArenaConfig {
-  readonly islands: readonly IslandPreset[];
+  /** Each match picks a layout reproducibly from its seed. */
+  readonly layouts: readonly (readonly IslandPreset[])[];
   /** Player spawn as a fraction of the arena size; must stay clear of every island. */
   readonly playerSpawn: { readonly x: number; readonly y: number };
 }
@@ -192,7 +193,7 @@ export interface OptionLimit {
 /** Documented limits for the values exposed in Options. */
 export const OPTION_LIMITS: Readonly<Record<keyof GameOptions, OptionLimit>> = {
   matchDurationSeconds: { min: 60, max: 180, step: 10, default: 120 },
-  enemySpawnSeconds: { min: 1, max: 15, step: 1, default: 3 },
+  enemySpawnSeconds: { min: 1, max: 15, step: 1, default: 4 },
 };
 
 export const DEFAULT_OPTIONS: GameOptions = {
@@ -232,10 +233,25 @@ export const defaultGameConfig: GameConfig = {
     maxHeight: 1080,
   },
   arena: {
-    islands: [
-      { art: 'grassIsland', x: 0.24, y: 0.32, radius: 105 },
-      { art: 'sandIsland', x: 0.74, y: 0.7, radius: 80 },
-      { art: 'rock', x: 0.66, y: 0.24, radius: 34 },
+    layouts: [
+      [
+        { art: 'grassIsland', x: 0.24, y: 0.32, radius: 105 },
+        { art: 'sandIsland', x: 0.74, y: 0.7, radius: 80 },
+        { art: 'rock', x: 0.66, y: 0.24, radius: 34 },
+        { art: 'sandIsland', x: 0.3, y: 0.78, radius: 54 },
+      ],
+      [
+        { art: 'grassIsland', x: 0.2, y: 0.23, radius: 92 },
+        { art: 'sandIsland', x: 0.82, y: 0.28, radius: 90 },
+        { art: 'rock', x: 0.5, y: 0.13, radius: 26 },
+        { art: 'grassIsland', x: 0.75, y: 0.78, radius: 82 },
+      ],
+      [
+        { art: 'sandIsland', x: 0.18, y: 0.38, radius: 82 },
+        { art: 'grassIsland', x: 0.78, y: 0.62, radius: 112 },
+        { art: 'rock', x: 0.48, y: 0.14, radius: 34 },
+        { art: 'sandIsland', x: 0.53, y: 0.85, radius: 60 },
+      ],
     ],
     playerSpawn: { x: 0.5, y: 0.5 },
   },
@@ -266,13 +282,13 @@ export const defaultGameConfig: GameConfig = {
   enemies: {
     spawn: {
       intervalSeconds: OPTION_LIMITS.enemySpawnSeconds.default,
-      initialDelaySeconds: 2,
-      maxAlive: 10,
+      initialDelaySeconds: 4,
+      maxAlive: 8,
       openingOrder: ['chaser', 'shooter'],
       chaserWeight: 0.6,
       minDistanceFromPlayer: 380,
       clearance: 24,
-      maxAttempts: 30,
+      maxAttempts: 60,
     },
     steering: {
       lookAhead: 150,
@@ -283,13 +299,13 @@ export const defaultGameConfig: GameConfig = {
     chaser: {
       maxHealth: 40,
       hull: SHIP_HULL,
-      contactDamage: 25,
+      contactDamage: 20,
       motion: {
-        maxSpeed: 170,
+        maxSpeed: 130,
         acceleration: 200,
         brakeDeceleration: 200,
         drag: 45,
-        turnSpeed: Math.PI * 0.9,
+        turnSpeed: Math.PI * 0.72,
       },
     },
     shooter: {
