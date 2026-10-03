@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useEffectEvent, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { createMatchConfig, type GameOptions } from '@/config/gameConfig';
 import { createGameStore } from '@/game/bridge/gameStore';
 import { GameController } from '@/game/GameController';
@@ -26,6 +26,9 @@ export function MatchScreen({ options, onExit, onFinish }: MatchScreenProps) {
   const [touch] = useState(() => new TouchInput());
   const [attempt, setAttempt] = useState(0);
   const [confirmingLeave, setConfirmingLeave] = useState(false);
+  const pauseTitleId = useId();
+  const pauseMessageId = useId();
+  const pauseDialogRef = useRef<HTMLDialogElement>(null);
   const ui = useSyncExternalStore(store.subscribe, store.getSnapshot);
   const finish = useEffectEvent(onFinish);
 
@@ -46,6 +49,35 @@ export function MatchScreen({ options, onExit, onFinish }: MatchScreenProps) {
       if (controllerRef.current === controller) controllerRef.current = null;
     };
   }, [config, store, touch, attempt]);
+
+  useEffect(() => {
+    const pauseForBlur = () => {
+      const current = store.getSnapshot();
+      if (current.phase === 'running' && !current.paused) {
+        controllerRef.current?.setPaused(true, 'focus');
+      }
+    };
+    const pauseWhenHidden = () => {
+      if (document.visibilityState === 'hidden') pauseForBlur();
+    };
+
+    window.addEventListener('blur', pauseForBlur);
+    document.addEventListener('visibilitychange', pauseWhenHidden);
+    return () => {
+      window.removeEventListener('blur', pauseForBlur);
+      document.removeEventListener('visibilitychange', pauseWhenHidden);
+    };
+  }, [store]);
+
+  useEffect(() => {
+    const dialog = pauseDialogRef.current;
+    if (!dialog) return;
+    if (ui.paused && !confirmingLeave && !dialog.open) dialog.showModal();
+    if ((!ui.paused || confirmingLeave) && dialog.open) dialog.close();
+    return () => {
+      if (dialog.open) dialog.close();
+    };
+  }, [confirmingLeave, ui.paused]);
 
   const playing = ui.phase === 'running' || ui.phase === 'ending';
 
@@ -78,7 +110,7 @@ export function MatchScreen({ options, onExit, onFinish }: MatchScreenProps) {
         </ul>
       </aside>
 
-      {ui.phase === 'running' && <TouchControls touch={touch} />}
+      {ui.phase === 'running' && !ui.paused && <TouchControls touch={touch} />}
 
       {ui.phase === 'loading' && (
         <div className="match__overlay" role="status" aria-live="polite">
@@ -114,6 +146,15 @@ export function MatchScreen({ options, onExit, onFinish }: MatchScreenProps) {
         <div className="match__slot match__slot--center">{playing && <TimerReadout ui={ui} />}</div>
         <div className="match__slot match__slot--end">
           {playing && <ScoreReadout ui={ui} />}
+          {ui.phase === 'running' && !ui.paused && (
+            <button
+              type="button"
+              className="btn btn--secondary match__tool"
+              onClick={() => controllerRef.current?.setPaused(true)}
+            >
+              Pause
+            </button>
+          )}
           <MuteButton className="btn btn--secondary match__tool" />
           <button type="button" className="btn btn--secondary match__tool" onClick={requestLeave}>
             Main Menu
@@ -121,6 +162,42 @@ export function MatchScreen({ options, onExit, onFinish }: MatchScreenProps) {
         </div>
       </header>
       {playing && <HudAnnouncements ui={ui} />}
+
+      <dialog
+        className="match__pause panel"
+        ref={pauseDialogRef}
+        aria-labelledby={pauseTitleId}
+        aria-describedby={pauseMessageId}
+        onCancel={(event) => event.preventDefault()}
+      >
+        {ui.paused && !confirmingLeave && (
+          <>
+            <h2 id={pauseTitleId}>Battle paused</h2>
+            <p id={pauseMessageId}>
+              {ui.pauseReason === 'focus'
+                ? 'The battle paused when you left the game. Resume when you are ready.'
+                : 'The battle is on hold. Resume when you are ready.'}
+            </p>
+            <div className="match__actions">
+              <button
+                type="button"
+                className="btn btn--primary"
+                autoFocus
+                onClick={() => controllerRef.current?.setPaused(false)}
+              >
+                Resume
+              </button>
+              <button
+                type="button"
+                className="btn btn--secondary"
+                onClick={requestLeave}
+              >
+                Main Menu
+              </button>
+            </div>
+          </>
+        )}
+      </dialog>
 
       <ConfirmDialog
         open={confirmingLeave}

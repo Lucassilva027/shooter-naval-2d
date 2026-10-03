@@ -1,5 +1,5 @@
 import { configKey } from '@/game/matchResult';
-import { http, HttpResponse } from 'msw';
+import { delay, http, HttpResponse } from 'msw';
 import type {
   MatchHistoryEntry,
   MatchSubmission,
@@ -11,6 +11,7 @@ import type { MatchOutcome } from '@/game/core/events';
 import { validateNickname } from '@/storage/profile';
 import type { MatchesDatabase } from './db';
 import { createMatchesDatabase } from './db';
+import { getNetworkScenario } from './scenarios/network';
 
 const API_ROOT = '*/api';
 const DEFAULT_PAGE_SIZE = 10;
@@ -50,8 +51,26 @@ function httpPostMatches(database: MatchesDatabase) {
   });
 }
 
+async function applyNetworkScenario(): Promise<Response | null> {
+  switch (getNetworkScenario()) {
+    case 'normal':
+      return null;
+    case 'slow':
+      await delay(1_500);
+      return null;
+    case 'server-error':
+      return HttpResponse.json(
+        { message: 'The mock records service is temporarily unavailable.' },
+        { status: 503 },
+      );
+  }
+}
+
 function httpGetRanking(database: MatchesDatabase) {
   return http.get(`${API_ROOT}/ranking`, async ({ request }) => {
+    const scenarioResponse = await applyNetworkScenario();
+    if (scenarioResponse) return scenarioResponse;
+
     const url = new URL(request.url);
     const key = url.searchParams.get('configKey');
     const page = parsePageParams(url);
@@ -81,6 +100,9 @@ function httpGetRanking(database: MatchesDatabase) {
 
 function httpGetHistory(database: MatchesDatabase) {
   return http.get(`${API_ROOT}/history`, async ({ request }) => {
+    const scenarioResponse = await applyNetworkScenario();
+    if (scenarioResponse) return scenarioResponse;
+
     const url = new URL(request.url);
     const playerId = url.searchParams.get('playerId');
     const page = parsePageParams(url);

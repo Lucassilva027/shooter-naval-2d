@@ -159,17 +159,18 @@ docs/
 - [x] TanStack Query: paginação, cache, invalidação, retries, `placeholderData`
 - [x] Registro idempotente (ID da partida gerado no cliente) + fila de pendentes persistida
 - [x] Respostas atrasadas não sobrescrevem dados recentes
-- [ ] UI de seleção/reset de cenários de rede
+- [x] UI de seleção/reset de cenários de rede
 
 #### 10. Pausa
 
-- [ ] Manual (tecla/botão), automática (blur, `visibilitychange`)
-- [ ] Retomada exige ação; sem acúmulo de delta/inputs
+- [x] Manual (tecla/botão), automática (blur, `visibilitychange`)
+- [x] Retomada exige ação; sem acúmulo de delta/inputs
 
 #### 11. Playwright (críticos primeiro)
 
-- [ ] Instrumentação: seed, relógio controlado, leitura do estado
-- [ ] Options, partida (movimento, disparos, fim por tempo/morte), pausa
+- [x] Instrumentação: seed, relógio controlado, leitura do estado
+- [x] Options
+- [x] Partida: movimento, disparos, fim por tempo/morte, pausa
 - [ ] Ranking/histórico (vazio, erro, paginação, timeout sem duplicação, pendente após refresh)
 - [ ] Visual: menu, arena estável, resultado
 - [ ] Projetos desktop + mobile (Chromium), relatório HTML, traces em falha

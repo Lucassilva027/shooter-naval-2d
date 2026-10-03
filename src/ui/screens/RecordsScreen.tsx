@@ -1,10 +1,17 @@
 import { useState, useId, useRef, type KeyboardEvent } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   hasSameRecordsFilter,
   matchHistoryQueryOptions,
   rankingQueryOptions,
 } from '@/api/records';
+import {
+  getNetworkScenario,
+  NETWORK_SCENARIOS,
+  resetNetworkScenario,
+  setNetworkScenario,
+  type NetworkScenario,
+} from '@/mocks/scenarios/network';
 import { formatClock, outcomeLabel } from '@/ui/format';
 import { Scene } from '@/ui/components/Scene';
 
@@ -38,8 +45,17 @@ export function RecordsScreen({
 }: RecordsScreenProps) {
   const baseId = useId();
   const tabRefs = useRef(new Map<RecordsTab, HTMLButtonElement>());
+  const queryClient = useQueryClient();
   const [rankingPage, setRankingPage] = useState(1);
   const [historyPage, setHistoryPage] = useState(1);
+  const [networkScenario, setNetworkScenarioState] = useState(getNetworkScenario);
+  const showNetworkControls = import.meta.env.VITE_API_MOCKING !== 'false';
+
+  const changeNetworkScenario = (scenario: NetworkScenario) => {
+    setNetworkScenario(scenario);
+    setNetworkScenarioState(scenario);
+    void queryClient.invalidateQueries({ queryKey: ['records'] });
+  };
 
   // Arrow keys move between tabs (roving tabindex), per the ARIA tabs pattern.
   const handleKeyDown = (event: KeyboardEvent) => {
@@ -78,6 +94,46 @@ export function RecordsScreen({
             </button>
           ))}
         </div>
+
+        {showNetworkControls && (
+          <div className="records__scenario">
+            <label htmlFor={`${baseId}-network-scenario`}>Network scenario</label>
+            <div className="records__scenario-controls">
+              <select
+                id={`${baseId}-network-scenario`}
+                value={networkScenario}
+                aria-describedby={`${baseId}-network-scenario-description`}
+                onChange={(event) => {
+                  const scenario = NETWORK_SCENARIOS.find(
+                    ({ id }) => id === event.currentTarget.value,
+                  );
+                  if (scenario) changeNetworkScenario(scenario.id);
+                }}
+              >
+                {NETWORK_SCENARIOS.map(({ id, label }) => (
+                  <option key={id} value={id}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="btn btn--secondary records__page-button"
+                disabled={networkScenario === 'normal'}
+                onClick={() => {
+                  resetNetworkScenario();
+                  setNetworkScenarioState('normal');
+                  void queryClient.invalidateQueries({ queryKey: ['records'] });
+                }}
+              >
+                Reset scenario
+              </button>
+            </div>
+            <p id={`${baseId}-network-scenario-description`} className="panel__muted">
+              {NETWORK_SCENARIOS.find(({ id }) => id === networkScenario)?.description}
+            </p>
+          </div>
+        )}
 
         <div
           role="tabpanel"

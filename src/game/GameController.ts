@@ -14,6 +14,7 @@ import { KeyboardInput } from './input/KeyboardInput';
 import type { TouchInput } from './input/TouchInput';
 import type { MatchResult } from './matchResult';
 import { GameRenderer } from './render/GameRenderer';
+import { ManualGameClock, type GameTestState } from './testing/gameTestHooks';
 
 /** `?seed=123` reproduces a match exactly (used by tests); otherwise every match differs. */
 function matchSeed(params: URLSearchParams): number {
@@ -49,10 +50,13 @@ export class GameController {
   private finished = false;
   /** While true, time stands still (e.g. the leave-battle confirmation is open). */
   private suspended = false;
+  private paused = false;
+  private readonly testClock: ManualGameClock | null;
 
   constructor(private readonly options: GameControllerOptions) {
     const { simulation } = options.config;
     this.loop = new FixedStepLoop(simulation.fixedStepSeconds, simulation.maxFrameSeconds);
+    this.testClock = import.meta.env.MODE === 'e2e' ? new ManualGameClock() : null;
     this.keyboard = new KeyboardInput(window, this.handleCommand);
     this.input = mergeInputs([this.keyboard, options.touch]);
   }
@@ -62,13 +66,36 @@ export class GameController {
     if (this.destroyed || this.suspended === suspended) return;
     this.suspended = suspended;
     this.loop.reset();
+    if (import.meta.env.MODE === 'e2e') this.testClock?.reset();
     this.updateInputEnabled();
   }
 
+  setPaused(paused: boolean, reason: 'manual' | 'focus' = 'manual'): void {
+    if (
+      this.destroyed ||
+      this.suspended ||
+      !this.simulation ||
+      this.outroRemaining !== null ||
+      this.paused === paused
+    ) {
+      return;
+    }
+    this.paused = paused;
+    this.loop.reset();
+    if (import.meta.env.MODE === 'e2e') this.testClock?.reset();
+    this.updateInputEnabled();
+    this.options.store.publish({
+      paused,
+      pauseReason: paused ? reason : null,
+    });
+  }
+
   private updateInputEnabled(): void {
-    const active = !this.suspended && this.simulation !== null && this.outroRemaining === null;
-    this.keyboard.setEnabled(active);
-    this.options.touch.setEnabled(active);
+    const canReceiveKeyboardCommands =
+      !this.suspended && this.simulation !== null && this.outroRemaining === null;
+    const canPlay = canReceiveKeyboardCommands && !this.paused;
+    this.keyboard.setEnabled(canReceiveKeyboardCommands);
+    this.options.touch.setEnabled(canPlay);
     this.input.clear();
   }
 
@@ -109,6 +136,7 @@ export class GameController {
       this.renderer = new GameRenderer(app, textures, this.simulation, {
         showColliders: params.has('colliders'),
       });
+      this.installTestHooks();
 
       this.keyboard.attach();
       this.updateInputEnabled();
@@ -141,6 +169,12 @@ export class GameController {
     this.app = null;
     this.renderer = null;
     this.simulation = null;
+    if (
+      import.meta.env.MODE === 'e2e' &&
+      window.__PIRATE_BATTLE_TEST__?.readState === this.readTestState
+    ) {
+      delete window.__PIRATE_BATTLE_TEST__;
+    }
   }
 
   private readonly tick = (ticker: Ticker): void => {
@@ -148,12 +182,57 @@ export class GameController {
     const renderer = this.renderer;
     if (!simulation || !renderer) return;
 
-    if (this.suspended) {
+    if (this.suspended || this.paused) {
       renderer.render(1, 0);
       return;
     }
 
+    if (import.meta.env.MODE === 'e2e' && this.testClock) {
+      const frameSeconds = this.testClock.consumeFrame();
+      if (frameSeconds === 0) {
+        renderer.render(1, 0);
+        return;
+      }
+      let remaining = frameSeconds;
+      let alpha = 1;
+      const maxFrameSeconds = this.options.config.simulation.maxFrameSeconds;
+
+      while (remaining > 0 && !this.finished && !this.destroyed) {
+        const slice = Math.min(remaining, maxFrameSeconds);
+        remaining -= slice;
+
+        if (simulation.outcome) {
+          this.stepOutro(simulation, simulation.outcome, slice);
+        } else {
+          alpha = this.loop.advance(slice, (dt) => {
+            simulation.step(dt, this.input.read());
+          });
+
+          const events = simulation.drainEvents();
+          if (events.length > 0) {
+            renderer.handleEvents(events);
+            playEventSounds(events);
+          }
+
+          if (simulation.outcome) {
+            alpha = 1;
+            this.stepOutro(simulation, simulation.outcome, slice);
+          } else {
+            this.playWarnings(simulation);
+          }
+        }
+        this.publishHud(simulation);
+      }
+
+      renderer.render(alpha, frameSeconds);
+      return;
+    }
+
     const frameSeconds = ticker.deltaMS / 1000;
+    if (frameSeconds === 0) {
+      renderer.render(1, 0);
+      return;
+    }
     let alpha = this.loop.advance(frameSeconds, (dt) => {
       simulation.step(dt, this.input.read());
     });
@@ -226,9 +305,41 @@ export class GameController {
   private readonly handleCommand = (command: InputCommand): void => {
     switch (command) {
       case 'pause':
-        // Pause flow is implemented in a later phase.
+        this.setPaused(!this.paused);
         break;
     }
+  };
+
+  private installTestHooks(): void {
+    if (import.meta.env.MODE !== 'e2e' || !this.testClock) return;
+    window.__PIRATE_BATTLE_TEST__ = {
+      advanceTime: (milliseconds) => this.testClock?.advance(milliseconds),
+      readState: this.readTestState,
+    };
+  }
+
+  private readonly readTestState = (): GameTestState | null => {
+    const simulation = this.simulation;
+    if (!simulation) return null;
+    const ui = this.options.store.getSnapshot();
+    return {
+      phase: ui.phase,
+      paused: ui.paused,
+      pauseReason: ui.pauseReason,
+      seed: simulation.seed,
+      elapsedSeconds: simulation.elapsedSeconds,
+      remainingSeconds: simulation.remainingSeconds,
+      score: simulation.score,
+      health: simulation.player.health,
+      outcome: simulation.outcome,
+      player: {
+        x: simulation.player.x,
+        y: simulation.player.y,
+        rotation: simulation.player.rotation,
+      },
+      enemies: simulation.enemies.map(({ kind, x, y, health }) => ({ kind, x, y, health })),
+      projectileCount: simulation.projectiles.length,
+    };
   };
 }
 

@@ -4,6 +4,7 @@ import { configKey } from '@/game/matchResult';
 import { matchFixtures } from './fixtures/matches';
 import { createApiHandlers } from './handlers';
 import { server } from './node';
+import { resetNetworkScenario, setNetworkScenario } from './scenarios/network';
 
 class MemoryMatchesDatabase {
   entries = [...matchFixtures];
@@ -28,6 +29,7 @@ describe('mock match API', () => {
 
   beforeEach(() => {
     database.entries = [...matchFixtures];
+    resetNetworkScenario();
     server.use(...createApiHandlers(database));
   });
 
@@ -114,5 +116,22 @@ describe('mock match API', () => {
 
     expect(submissionResponse.status).toBe(400);
     expect(pageResponse.status).toBe(400);
+  });
+
+  it('switches records requests into and out of the server-error scenario', async () => {
+    setNetworkScenario('server-error');
+    const failedResponse = await fetch(
+      'http://localhost/api/ranking?configKey=d120-s3&page=1&pageSize=2',
+    );
+    expect(failedResponse.status).toBe(503);
+    expect(await failedResponse.json()).toEqual({
+      message: 'The mock records service is temporarily unavailable.',
+    });
+
+    resetNetworkScenario();
+    const recoveredResponse = await fetch(
+      'http://localhost/api/ranking?configKey=d120-s3&page=1&pageSize=2',
+    );
+    expect(recoveredResponse.status).toBe(200);
   });
 });

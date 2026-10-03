@@ -421,6 +421,46 @@ dialog.panel::backdrop {
   font-size: 1rem;
 }
 
+.records__scenario {
+  display: grid;
+  gap: 8px;
+  width: min(100%, 520px);
+  margin: 16px auto 4px;
+  text-align: left;
+}
+
+.records__scenario > label {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.records__scenario-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.records__scenario-controls select {
+  min-width: 200px;
+  min-height: 40px;
+  padding: 0 36px 0 12px;
+  border: 1px solid #c9bfa6;
+  border-radius: 4px;
+  background: #102a32;
+  color: #fff4d6;
+  font: inherit;
+}
+
+.records__scenario-controls select:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.records__scenario > .panel__muted {
+  text-align: center;
+}
+
 .records__table {
   width: 100%;
   border-collapse: collapse;

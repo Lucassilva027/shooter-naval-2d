@@ -1,5 +1,13 @@
 import { expect, test } from '@playwright/test';
-import { leaveMatch, playButton, seedProfile, startMatch } from './helpers';
+import {
+  advanceGameTime,
+  leaveMatch,
+  playButton,
+  readGameState,
+  seedProfile,
+  startMatch,
+  waitForGameElapsed,
+} from './helpers';
 
 test.describe('first match', () => {
   test('asks for a valid nickname once, then remembers it', async ({ page }) => {
@@ -39,6 +47,73 @@ test.describe('menu and screens', () => {
   test.beforeEach(async ({ page }) => {
     await seedProfile(page);
     await page.goto('/');
+  });
+
+  test('manual pause freezes match time until an explicit resume action', async ({ page }) => {
+    await startMatch(page);
+
+    const timer = page.getByRole('timer');
+    await advanceGameTime(page, 1_000);
+    await waitForGameElapsed(page, 1);
+    await page.keyboard.press('p');
+    const pauseDialog = page.getByRole('dialog', { name: 'Battle paused' });
+    await expect(pauseDialog).toBeVisible();
+    await expect(pauseDialog.getByRole('button', { name: 'Resume' })).toBeFocused();
+    const pausedTime = await timer.textContent();
+    const elapsedWhenPaused = (await readGameState(page)).elapsedSeconds;
+
+    await advanceGameTime(page, 5_000);
+    await expect(timer).toHaveText(pausedTime ?? '');
+    expect((await readGameState(page)).elapsedSeconds).toBe(elapsedWhenPaused);
+    await page.keyboard.press('p');
+    await expect(pauseDialog).toHaveCount(0);
+    await advanceGameTime(page, 1_000);
+    await waitForGameElapsed(page, elapsedWhenPaused + 1);
+    await expect(timer).not.toHaveText(pausedTime ?? '', { timeout: 2_000 });
+
+    await page.getByRole('button', { name: 'Pause' }).click();
+    await expect(pauseDialog).toBeVisible();
+    await pauseDialog.getByRole('button', { name: 'Resume' }).click();
+    await expect(pauseDialog).toHaveCount(0);
+  });
+
+  test('losing focus pauses automatically and regaining focus does not resume', async ({ page }) => {
+    await startMatch(page);
+    const timer = page.getByRole('timer');
+    await advanceGameTime(page, 1_000);
+    await waitForGameElapsed(page, 1);
+
+    await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+    const pauseDialog = page.getByRole('dialog', { name: 'Battle paused' });
+    await expect(pauseDialog).toBeVisible();
+    await expect(
+      pauseDialog.getByText('The battle paused when you left the game. Resume when you are ready.'),
+    ).toBeVisible();
+    const pausedTime = await timer.textContent();
+    const elapsedWhenPaused = (await readGameState(page)).elapsedSeconds;
+
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await advanceGameTime(page, 5_000);
+    await expect(pauseDialog).toBeVisible();
+    await expect(timer).toHaveText(pausedTime ?? '');
+    expect((await readGameState(page)).elapsedSeconds).toBe(elapsedWhenPaused);
+
+    await pauseDialog.getByRole('button', { name: 'Resume' }).click();
+    await expect(pauseDialog).toHaveCount(0);
+    await advanceGameTime(page, 1_000);
+    await waitForGameElapsed(page, elapsedWhenPaused + 1);
+    await expect(timer).not.toHaveText(pausedTime ?? '', { timeout: 2_000 });
+
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        value: 'hidden',
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await expect(pauseDialog).toBeVisible();
+    await pauseDialog.getByRole('button', { name: 'Resume' }).click();
+    await expect(pauseDialog).toHaveCount(0);
   });
 
   test('leaving a battle asks for confirmation and records nothing', async ({ page }) => {

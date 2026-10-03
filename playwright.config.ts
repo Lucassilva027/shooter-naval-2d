@@ -32,8 +32,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `npx vite --port ${PORT} --strictPort`,
+    command: `npx vite --mode e2e --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,
-    reuseExistingServer: !isCI,
+    reuseExistingServer: false,
   },
 });

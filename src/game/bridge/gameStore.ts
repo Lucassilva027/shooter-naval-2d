@@ -11,6 +11,8 @@ export type GamePhase = 'loading' | 'running' | 'ending' | 'error';
 
 export interface GameUiState {
   readonly phase: GamePhase;
+  readonly paused: boolean;
+  readonly pauseReason: 'manual' | 'focus' | null;
   /** Asset loading progress, 0-100 (integer). */
   readonly loadProgress: number;
   readonly errorMessage: string | null;
@@ -26,6 +28,8 @@ export interface GameUiState {
 
 export const INITIAL_GAME_UI_STATE: GameUiState = {
   phase: 'loading',
+  paused: false,
+  pauseReason: null,
   loadProgress: 0,
   errorMessage: null,
   health: 0,
