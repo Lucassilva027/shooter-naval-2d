@@ -172,6 +172,8 @@ export interface GameConfig {
   readonly simulation: SimulationConfig;
   readonly world: WorldConfig;
   readonly arena: ArenaConfig;
+  /** Health lost by any ship on first contact with a rock. */
+  readonly rockImpactDamage: number;
   readonly player: PlayerConfig;
   readonly enemies: EnemiesConfig;
 }
@@ -255,6 +257,7 @@ export const defaultGameConfig: GameConfig = {
     ],
     playerSpawn: { x: 0.5, y: 0.5 },
   },
+  rockImpactDamage: 10,
   player: {
     maxHealth: 100,
     hull: SHIP_HULL,

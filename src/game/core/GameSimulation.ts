@@ -48,6 +48,7 @@ export class GameSimulation {
 
   private readonly random: Random;
   private readonly events: GameEvent[] = [];
+  private readonly rockContacts = new WeakMap<Ship, ReadonlySet<Island>>();
   private nextEntityId = PLAYER_ID + 1;
   private readonly playerTargets: readonly Ship[];
   private readonly spawner: SpawnerState;
@@ -110,7 +111,9 @@ export class GameSimulation {
     this.resolveShipContacts();
     if (this.endIfPlayerSunk('collision')) return;
     this.resolveStaticCollisions(this.player);
+    if (this.endIfPlayerSunk('collision')) return;
     for (const enemy of this.enemies) this.resolveStaticCollisions(enemy);
+    this.removeSunkEnemies();
 
     stepProjectiles(this.projectiles, this.projectileWorld, dt, this.events);
     this.removeSunkEnemies();
@@ -191,6 +194,7 @@ export class GameSimulation {
 
   private destroyEnemy(enemy: Enemy, cause: 'player' | 'enemy' | 'collision'): void {
     if (cause === 'player') this.score++;
+    this.rockContacts.delete(enemy);
     this.events.push({
       type: 'shipDestroyed',
       shipId: enemy.id,
@@ -292,11 +296,28 @@ export class GameSimulation {
 
   /** Pushing out of one collider can nudge the hull into a neighbour, so resolve a few times. */
   private resolveStaticCollisions(ship: Ship): void {
+    const rockHits = new Set<Island>();
     for (let pass = 0; pass < STATIC_RESOLVE_PASSES; pass++) {
       let hit = confineToArena(ship, this.arena);
-      for (const island of this.islands) hit = resolveShipVsIsland(ship, island) || hit;
-      if (!hit) return;
+      for (const island of this.islands) {
+        const islandHit = resolveShipVsIsland(ship, island);
+        if (islandHit && island.art === 'rock') rockHits.add(island);
+        hit = islandHit || hit;
+      }
+      if (!hit) break;
     }
+
+    const previousContacts = this.rockContacts.get(ship);
+    for (const rock of rockHits) {
+      if (previousContacts?.has(rock) || ship.health <= 0) continue;
+      ship.health = Math.max(0, ship.health - this.config.rockImpactDamage);
+      this.events.push({ type: 'impact', surface: 'island', x: ship.x, y: ship.y });
+      if (ship !== this.player && ship.health <= 0) {
+        this.destroyEnemy(ship as Enemy, 'collision');
+      }
+    }
+    if (rockHits.size > 0 && ship.health > 0) this.rockContacts.set(ship, rockHits);
+    else this.rockContacts.delete(ship);
   }
 }
 

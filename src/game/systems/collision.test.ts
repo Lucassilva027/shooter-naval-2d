@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { defaultGameConfig, type HullCircle } from '@/config/gameConfig';
+import { defaultGameConfig, type GameConfig, type HullCircle } from '@/config/gameConfig';
 import { GameSimulation } from '../core/GameSimulation';
+import { createEnemy } from '../entities/enemy';
 import { EMPTY_INPUT } from '../input/actions';
 import { placeIslands, type Island } from '../entities/island';
 import { createShip } from '../entities/ship';
@@ -111,6 +112,27 @@ describe('separateShips', () => {
 
 describe('GameSimulation with islands', () => {
   const arena = { width: 1280, height: 720 };
+  const rockConfig: GameConfig = {
+    ...defaultGameConfig,
+    arena: {
+      ...defaultGameConfig.arena,
+      layouts: [[{ art: 'rock', x: 0.6, y: 0.5, radius: 34 }]],
+    },
+    enemies: {
+      ...defaultGameConfig.enemies,
+      spawn: { ...defaultGameConfig.enemies.spawn, initialDelaySeconds: 1e6 },
+    },
+  };
+
+  function reachRock(sim: GameSimulation) {
+    const rock = sim.islands[0];
+    if (!rock) throw new Error('test simulation must contain one rock');
+    sim.player.x = rock.x - 87;
+    sim.player.y = rock.y;
+    sim.player.rotation = 0;
+    sim.player.speed = 120;
+    return rock;
+  }
 
   function firstIsland(sim: GameSimulation) {
     const island = sim.islands[0];
@@ -142,5 +164,64 @@ describe('GameSimulation with islands', () => {
 
     for (let i = 0; i < 60 * 3; i++) sim.step(1 / 60, { ...EMPTY_INPUT, forward: true });
     expect(sim.player.speed).toBeGreaterThan(40);
+  });
+
+  it('damages the player once when a rock is first hit, not while scraping it', () => {
+    const sim = new GameSimulation(rockConfig, arena);
+    const rock = reachRock(sim);
+
+    for (let i = 0; i < 10; i++) sim.step(1 / 60, { ...EMPTY_INPUT, forward: true });
+
+    expect(sim.player.health).toBe(
+      defaultGameConfig.player.maxHealth - rockConfig.rockImpactDamage,
+    );
+    expect(sim.drainEvents().filter((event) => event.type === 'impact')).toHaveLength(1);
+
+    sim.player.x = rock.x - 200;
+    sim.step(1 / 60, EMPTY_INPUT);
+    sim.player.x = rock.x - 87;
+    sim.player.speed = 120;
+    sim.step(1 / 60, { ...EMPTY_INPUT, forward: true });
+
+    expect(sim.player.health).toBe(
+      defaultGameConfig.player.maxHealth - rockConfig.rockImpactDamage * 2,
+    );
+  });
+
+  it('damages enemy ships on rock impact without awarding the player a point', () => {
+    const sim = new GameSimulation(rockConfig, arena);
+    const rock = sim.islands[0];
+    if (!rock) throw new Error('test simulation must contain one rock');
+    const enemy = createEnemy(
+      1000,
+      'chaser',
+      rockConfig.enemies.chaser,
+      rock.x + 87,
+      rock.y,
+      Math.PI,
+    );
+    enemy.speed = 120;
+    sim.enemies.push(enemy);
+
+    sim.step(1 / 60, EMPTY_INPUT);
+
+    expect(enemy.health).toBe(rockConfig.enemies.chaser.maxHealth - rockConfig.rockImpactDamage);
+    expect(sim.score).toBe(0);
+  });
+
+  it('does not damage ships that hit a sand island', () => {
+    const config: GameConfig = {
+      ...rockConfig,
+      arena: {
+        ...rockConfig.arena,
+        layouts: [[{ art: 'sandIsland', x: 0.6, y: 0.5, radius: 34 }]],
+      },
+    };
+    const sim = new GameSimulation(config, arena);
+    reachRock(sim);
+
+    sim.step(1 / 60, { ...EMPTY_INPUT, forward: true });
+
+    expect(sim.player.health).toBe(defaultGameConfig.player.maxHealth);
   });
 });

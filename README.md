@@ -41,6 +41,8 @@ designed for landscape orientation.
 
 - Fixed-step deterministic game simulation, seeded with `?seed=<number>` for
   repeatable testing; each seed also selects one of three island layouts.
+- Rocks damage any ship for 10 health on first impact; scraping the same rock
+  does not repeatedly apply damage, and sandy/grass islands remain harmless.
 - Configurable match duration and enemy spawn interval. Defaults are 120 seconds
   and 4 seconds between spawns; Chasers move at 130 units/s, deal 20 contact
   damage, and are limited to 8 active enemies.
