@@ -158,7 +158,7 @@ docs/
 - [x] MSW (handlers, fixtures, db persistido, funciona no build)
 - [x] TanStack Query: paginação, cache, invalidação, retries, `placeholderData`
 - [x] Registro idempotente (ID da partida gerado no cliente) + fila de pendentes persistida
-- [ ] Respostas atrasadas não sobrescrevem dados recentes
+- [x] Respostas atrasadas não sobrescrevem dados recentes
 - [ ] UI de seleção/reset de cenários de rede
 
 #### 10. Pausa

@@ -16,6 +16,20 @@ export const recordsQueryKeys = {
   history: (params: MatchHistoryParams) => [...recordsQueryKeys.all, 'history', params] as const,
 };
 
+export function hasSameRecordsFilter(
+  queryKey: readonly unknown[] | undefined,
+  recordType: 'ranking' | 'history',
+  filterValue: string,
+  pageSize: number,
+): boolean {
+  if (!queryKey || queryKey[0] !== 'records' || queryKey[1] !== recordType) return false;
+  const params = queryKey[2];
+  if (typeof params !== 'object' || params === null) return false;
+  const queryParams = params as Record<string, unknown>;
+  const filterName = recordType === 'ranking' ? 'configKey' : 'playerId';
+  return queryParams[filterName] === filterValue && queryParams.pageSize === pageSize;
+}
+
 export async function submitMatch(
   submission: MatchSubmission,
 ): Promise<MatchSubmissionResponse> {

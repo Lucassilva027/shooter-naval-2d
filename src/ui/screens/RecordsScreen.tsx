@@ -1,6 +1,10 @@
 import { useState, useId, useRef, type KeyboardEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { matchHistoryQueryOptions, rankingQueryOptions } from '@/api/records';
+import {
+  hasSameRecordsFilter,
+  matchHistoryQueryOptions,
+  rankingQueryOptions,
+} from '@/api/records';
 import { formatClock, outcomeLabel } from '@/ui/format';
 import { Scene } from '@/ui/components/Scene';
 
@@ -126,7 +130,10 @@ function RankingPanel({
   const query = useQuery({
     ...rankingQueryOptions({ configKey, page, pageSize: PAGE_SIZE }),
     enabled: active,
-    placeholderData: (previousData) => previousData,
+    placeholderData: (previousData, previousQuery) =>
+      hasSameRecordsFilter(previousQuery?.queryKey, 'ranking', configKey, PAGE_SIZE)
+        ? previousData
+        : undefined,
   });
 
   if (query.isPending) return <p className="panel__muted" role="status">Loading ranking…</p>;
@@ -185,7 +192,10 @@ function HistoryPanel({
   const query = useQuery({
     ...matchHistoryQueryOptions({ playerId: playerId ?? '', page, pageSize: PAGE_SIZE }),
     enabled: active && playerId !== null,
-    placeholderData: (previousData) => previousData,
+    placeholderData: (previousData, previousQuery) =>
+      playerId && hasSameRecordsFilter(previousQuery?.queryKey, 'history', playerId, PAGE_SIZE)
+        ? previousData
+        : undefined,
   });
 
   if (!playerId) return <p className="panel__muted">Play a battle to start your match history.</p>;

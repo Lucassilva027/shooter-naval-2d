@@ -1,11 +1,12 @@
 import { QueryClient } from '@tanstack/react-query';
-import { http, HttpResponse } from 'msw';
+import { delay, http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { defaultGameConfig } from '@/config/gameConfig';
 import { apiClient } from './client';
 import {
   matchHistoryQueryOptions,
   matchSubmissionMutationOptions,
+  hasSameRecordsFilter,
   rankingQueryOptions,
 } from './records';
 import { server } from '@/mocks/node';
@@ -77,5 +78,75 @@ describe('record query options', () => {
     expect(response).toEqual({ matchId: 'match-1', status: 'created' });
     expect(queryClient.getQueryState(rankingOptions.queryKey)?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(historyOptions.queryKey)?.isInvalidated).toBe(true);
+  });
+
+  it('does not let a slower page response replace a newer page cache entry', async () => {
+    server.use(
+      http.get('*/api/ranking', async ({ request }) => {
+        const page = Number(new URL(request.url).searchParams.get('page'));
+        if (page === 1) await delay(100);
+        return HttpResponse.json({
+          items: [
+            {
+              rank: page,
+              matchId: `match-page-${page}`,
+              playerId: 'player-1',
+              nickname: 'Tester',
+              score: page,
+              survivedSeconds: 60,
+              endedAt: '2026-10-01T12:00:00.000Z',
+            },
+          ],
+          page,
+          pageSize: 1,
+          total: 2,
+          totalPages: 2,
+        });
+      }),
+    );
+    const olderPageOptions = rankingQueryOptions({
+      configKey: 'd120-s3',
+      page: 1,
+      pageSize: 1,
+    });
+    const currentPageOptions = rankingQueryOptions({
+      configKey: 'd120-s3',
+      page: 2,
+      pageSize: 1,
+    });
+
+    const olderRequest = queryClient.fetchQuery(olderPageOptions);
+    const currentPage = await queryClient.fetchQuery(currentPageOptions);
+    await olderRequest;
+
+    expect(currentPage.page).toBe(2);
+    expect(queryClient.getQueryData(currentPageOptions.queryKey)).toMatchObject({
+      page: 2,
+      items: [{ matchId: 'match-page-2' }],
+    });
+    expect(queryClient.getQueryData(olderPageOptions.queryKey)).toMatchObject({
+      page: 1,
+      items: [{ matchId: 'match-page-1' }],
+    });
+  });
+
+  it('keeps placeholder pages only while their filter and page size stay the same', () => {
+    const rankingKey = rankingQueryOptions({
+      configKey: 'd120-s3',
+      page: 1,
+      pageSize: 2,
+    }).queryKey;
+    const historyKey = matchHistoryQueryOptions({
+      playerId: 'player-1',
+      page: 1,
+      pageSize: 2,
+    }).queryKey;
+
+    expect(hasSameRecordsFilter(rankingKey, 'ranking', 'd120-s3', 2)).toBe(true);
+    expect(hasSameRecordsFilter(rankingKey, 'ranking', 'd60-s1', 2)).toBe(false);
+    expect(hasSameRecordsFilter(rankingKey, 'ranking', 'd120-s3', 10)).toBe(false);
+    expect(hasSameRecordsFilter(historyKey, 'history', 'player-1', 2)).toBe(true);
+    expect(hasSameRecordsFilter(historyKey, 'history', 'player-2', 2)).toBe(false);
+    expect(hasSameRecordsFilter(rankingKey, 'history', 'player-1', 2)).toBe(false);
   });
 });
