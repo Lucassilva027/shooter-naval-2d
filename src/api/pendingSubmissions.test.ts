@@ -69,6 +69,20 @@ afterEach(() => {
 });
 
 describe('pending match submissions', () => {
+  it('reports a local persistence failure without sending the submission', async () => {
+    vi.spyOn(storage, 'setItem').mockImplementation(() => {
+      throw new Error('Storage is unavailable.');
+    });
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const request = vi.spyOn(apiClient, 'post');
+
+    await expect(queueMatchSubmission(submission('match-storage-failure'), queryClient)).resolves.toBe(
+      'failed',
+    );
+    expect(request).not.toHaveBeenCalled();
+    expect(error).toHaveBeenCalledOnce();
+  });
+
   it('persists before sending and removes the queue entry after acknowledgement', async () => {
     server.use(
       http.post('*/api/matches', async ({ request }) => {
@@ -77,7 +91,9 @@ describe('pending match submissions', () => {
       }),
     );
 
-    await expect(queueMatchSubmission(submission('match-1'), queryClient)).resolves.toBe(true);
+    await expect(queueMatchSubmission(submission('match-1'), queryClient)).resolves.toBe(
+      'submitted',
+    );
     expect(readPendingSubmissions()).toEqual({ ok: true, submissions: [] });
   });
 
@@ -92,7 +108,9 @@ describe('pending match submissions', () => {
       }),
     );
 
-    await expect(queueMatchSubmission(submission('match-retry'), queryClient)).resolves.toBe(true);
+    await expect(queueMatchSubmission(submission('match-retry'), queryClient)).resolves.toBe(
+      'queued',
+    );
     expect(readPendingSubmissions()).toMatchObject({
       ok: true,
       submissions: [{ matchId: 'match-retry' }],

@@ -24,6 +24,7 @@ export interface GameTestState {
 
 export interface GameTestHooks {
   advanceTime(milliseconds: number): void;
+  setPlayerHealth(health: number): void;
   readState(): GameTestState | null;
 }
 

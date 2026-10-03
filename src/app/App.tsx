@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { GameOptions } from '@/config/gameConfig';
 import { createMatchConfig } from '@/config/gameConfig';
 import { audio } from '@/game/audio/AudioManager';
 import { configKey, type MatchResult } from '@/game/matchResult';
-import { flushPendingSubmissions, queueMatchSubmission } from '@/api/pendingSubmissions';
+import {
+  flushPendingSubmissions,
+  queueMatchSubmission,
+  type MatchSubmissionStatus,
+} from '@/api/pendingSubmissions';
 import { loadOptions, resetOptions, saveOptions } from '@/storage/options';
 import { loadProfile, saveNickname, type Profile } from '@/storage/profile';
 import { createMatchSubmission } from '@/storage/pendingSubmissions';
@@ -29,6 +33,8 @@ export function App() {
   const [profile, setProfile] = useState<Profile | null>(loadProfile);
   const [lastResult, setLastResult] = useState<MatchResult | null>(loadLastResult);
   const [options, setOptions] = useState<GameOptions>(loadOptions);
+  const [submissionStatus, setSubmissionStatus] = useState<MatchSubmissionStatus | null>(null);
+  const latestSubmission = useRef<ReturnType<typeof createMatchSubmission> | null>(null);
   const recordsConfigKey = useMemo(
     () => configKey(createMatchConfig(options)),
     [options],
@@ -37,6 +43,22 @@ export function App() {
     () => void flushPendingSubmissions(queryClient),
     [queryClient],
   );
+
+  const submitResult = (submission: ReturnType<typeof createMatchSubmission>) => {
+    void queueMatchSubmission(submission, queryClient).then(
+      (status) => {
+        if (latestSubmission.current?.matchId === submission.matchId) {
+          setSubmissionStatus(status);
+        }
+      },
+      (error: unknown) => {
+        console.error('Could not determine the completed match submission status.', error);
+        if (latestSubmission.current?.matchId === submission.matchId) {
+          setSubmissionStatus('failed');
+        }
+      },
+    );
+  };
 
   useEffect(() => {
     syncPendingSubmissions();
@@ -58,10 +80,21 @@ export function App() {
     setScreen({ name: 'result', completed });
     if (!profile) {
       console.error('Completed match was not submitted because the player profile is unavailable.');
+      latestSubmission.current = null;
+      setSubmissionStatus('failed');
       return;
     }
     const submission = createMatchSubmission(profile.playerId, profile.nickname, result);
-    void queueMatchSubmission(submission, queryClient);
+    latestSubmission.current = submission;
+    setSubmissionStatus('sending');
+    submitResult(submission);
+  };
+
+  const retrySubmission = () => {
+    const submission = latestSubmission.current;
+    if (!submission) return;
+    setSubmissionStatus('sending');
+    submitResult(submission);
   };
 
   return (
@@ -78,7 +111,15 @@ export function App() {
           <MatchScreen key={screen.id} options={options} onExit={toMenu} onFinish={finishMatch} />
         );
       case 'result':
-        return <ResultScreen completed={screen.completed} onPlayAgain={play} onMenu={toMenu} />;
+        return (
+          <ResultScreen
+            completed={screen.completed}
+            submissionStatus={submissionStatus}
+            onRetrySubmission={retrySubmission}
+            onPlayAgain={play}
+            onMenu={toMenu}
+          />
+        );
       case 'options':
         return (
           <OptionsScreen

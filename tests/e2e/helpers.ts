@@ -65,6 +65,14 @@ export async function advanceGameTime(page: Page, milliseconds: number): Promise
   }, milliseconds);
 }
 
+export async function setPlayerHealth(page: Page, health: number): Promise<void> {
+  await page.evaluate((value) => {
+    const hooks = window.__PIRATE_BATTLE_TEST__;
+    if (!hooks) throw new Error('Game test hooks are unavailable.');
+    hooks.setPlayerHealth(value);
+  }, health);
+}
+
 export async function waitForGameElapsed(page: Page, seconds: number): Promise<void> {
   await page.waitForFunction(
     (target) => {

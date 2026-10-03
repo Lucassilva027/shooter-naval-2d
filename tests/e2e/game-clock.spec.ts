@@ -4,6 +4,7 @@ import {
   readGameState,
   seedGameOptions,
   seedProfile,
+  setPlayerHealth,
   startMatch,
   waitForGameElapsed,
 } from './helpers';
@@ -72,76 +73,17 @@ test.describe('match completion', () => {
     await page.goto('/?seed=12345');
     await startMatch(page);
 
-    await page.keyboard.down('w');
-    await page.keyboard.down('Space');
-    await page.keyboard.down('k');
-    await page.keyboard.down('l');
-    let outcome: 'timeout' | 'destroyed' | null = null;
-    for (let elapsed = 1; elapsed <= 60; elapsed++) {
-      const state = await readGameState(page);
-      if (state.phase !== 'running') {
-        outcome = state.outcome;
-        break;
-      }
-      const target = state.enemies
-        .slice()
-        .sort(
-          (left, right) =>
-            Math.hypot(left.x - state.player.x, left.y - state.player.y) -
-            Math.hypot(right.x - state.player.x, right.y - state.player.y),
-        )[0];
-      const desired = target
-        ? Math.atan2(target.y - state.player.y, target.x - state.player.x)
-        : null;
-      const difference =
-        desired === null
-          ? 0
-          : Math.atan2(
-              Math.sin(desired - state.player.rotation),
-              Math.cos(desired - state.player.rotation),
-            );
-      const duration = Math.min(Math.abs(difference) / (Math.PI * 0.85), 0.35);
-      if (duration > 0.02) {
-        const turnKey = difference > 0 ? 'd' : 'a';
-        await page.keyboard.down(turnKey);
-        await advanceGameTime(page, duration * 1_000);
-        await page.keyboard.up(turnKey);
-      }
-      await advanceGameTime(page, (1 - duration) * 1_000);
-      let current = await readGameState(page);
-      let extraClockTicks = 0;
-      while (
-        current.phase === 'running' &&
-        current.outcome === null &&
-        current.elapsedSeconds + 1e-6 < elapsed &&
-        extraClockTicks < 5
-      ) {
-        await advanceGameTime(page, 50);
-        await page.waitForTimeout(50);
-        current = await readGameState(page);
-        extraClockTicks++;
-      }
-      expect(
-        current.phase !== 'running' ||
-          current.outcome !== null ||
-          current.elapsedSeconds + 1e-6 >= elapsed,
-      ).toBe(true);
-      const completed = page.getByRole('heading', { name: 'Battle complete' });
-      const sunk = page.getByRole('heading', { name: 'Ship sunk' });
-      if (await completed.isVisible() || await sunk.isVisible()) {
-        outcome = await completed.isVisible() ? 'timeout' : 'destroyed';
-        break;
-      }
-      if (current.phase === 'ending' || current.outcome !== null) {
-        outcome = current.outcome;
-        break;
-      }
-    }
-    expect(outcome).toBe('timeout');
-    const resultHeading = page.getByRole('heading', { name: 'Battle complete' });
-    if (!(await resultHeading.isVisible())) await advanceGameTime(page, 2_000);
+    await setPlayerHealth(page, 10_000);
+    await advanceGameTime(page, 59_000);
+    await waitForGameElapsed(page, 59);
+    await advanceGameTime(page, 1_000);
+    await waitForGameElapsed(page, 60);
+    expect((await readGameState(page)).outcome).toBe('timeout');
+
+    await advanceGameTime(page, 2_000);
     await expect(page.getByRole('heading', { name: 'Battle complete' })).toBeVisible();
     await expect(page.getByText(/Time up/)).toBeVisible();
+    await expect(page.getByTestId('submission-status')).toHaveText('Result submitted.');
   });
 
   test('finishes by sinking when chasers repeatedly reach an idle player', async ({ page }) => {
@@ -152,5 +94,6 @@ test.describe('match completion', () => {
     await advanceGameTime(page, 20_000);
     await expect(page.getByRole('heading', { name: 'Ship sunk' })).toBeVisible();
     await expect(page.getByText('Ship sunk', { exact: true })).toBeVisible();
+    await expect(page.getByTestId('submission-status')).toHaveText('Result submitted.');
   });
 });

@@ -1,3 +1,4 @@
+import 'pixi.js/unsafe-eval';
 import { Application, type Ticker } from 'pixi.js';
 import type { GameConfig } from '@/config/gameConfig';
 import { loadGameTextures } from './assets/gameAssets';
@@ -314,6 +315,16 @@ export class GameController {
     if (import.meta.env.MODE !== 'e2e' || !this.testClock) return;
     window.__PIRATE_BATTLE_TEST__ = {
       advanceTime: (milliseconds) => this.testClock?.advance(milliseconds),
+      setPlayerHealth: (health) => {
+        if (!Number.isFinite(health) || health <= 0) {
+          throw new RangeError('Test player health must be a finite positive number.');
+        }
+        const player = this.simulation?.player;
+        if (!player || this.simulation?.outcome) {
+          throw new Error('Player health can only be set during an active test match.');
+        }
+        player.health = health;
+      },
       readState: this.readTestState,
     };
   }

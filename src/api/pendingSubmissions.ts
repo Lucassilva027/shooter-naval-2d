@@ -6,16 +6,26 @@ import { enqueuePendingSubmission, readPendingSubmissions, removePendingSubmissi
 let flushPromise: Promise<void> | null = null;
 let flushRequested = false;
 
+export type MatchSubmissionStatus = 'sending' | 'submitted' | 'queued' | 'failed';
+
 export async function queueMatchSubmission(
   submission: MatchSubmission,
   queryClient: QueryClient,
-): Promise<boolean> {
+): Promise<Exclude<MatchSubmissionStatus, 'sending'>> {
   if (!enqueuePendingSubmission(submission)) {
     console.error('Could not persist the completed match submission; it was not sent.', submission.matchId);
-    return false;
+    return 'failed';
   }
   await flushPendingSubmissions(queryClient);
-  return true;
+
+  const stored = readPendingSubmissions();
+  if (!stored.ok) {
+    console.error('Could not verify the completed match submission status.', stored.error);
+    return 'failed';
+  }
+  return stored.submissions.some((entry) => entry.matchId === submission.matchId)
+    ? 'queued'
+    : 'submitted';
 }
 
 export function flushPendingSubmissions(queryClient: QueryClient): Promise<void> {

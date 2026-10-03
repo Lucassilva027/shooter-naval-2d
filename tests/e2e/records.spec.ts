@@ -205,6 +205,13 @@ test('keeps a failed submission pending across reload and flushes it on startup'
     ) as unknown[];
     return pending.length === 1;
   });
+  await expect(page.getByTestId('submission-status')).toHaveText(
+    'Saved on this device. It will be sent when the connection is available.',
+  );
+  await page.getByRole('button', { name: 'Retry submission' }).click();
+  await expect(page.getByTestId('submission-status')).toHaveText(
+    'Saved on this device. It will be sent when the connection is available.',
+  );
 
   await page.reload();
   await expect
