@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { GameOptions } from '@/config/gameConfig';
+import { createMatchConfig } from '@/config/gameConfig';
 import { audio } from '@/game/audio/AudioManager';
-import type { MatchResult } from '@/game/matchResult';
+import { configKey, type MatchResult } from '@/game/matchResult';
+import { flushPendingSubmissions, queueMatchSubmission } from '@/api/pendingSubmissions';
 import { loadOptions, resetOptions, saveOptions } from '@/storage/options';
 import { loadProfile, saveNickname, type Profile } from '@/storage/profile';
+import { createMatchSubmission } from '@/storage/pendingSubmissions';
 import { loadLastResult, recordCompletedMatch, type CompletedMatch } from '@/storage/results';
 import { RotateNotice } from '@/ui/components/RotateNotice';
 import { MatchScreen } from '@/ui/screens/MatchScreen';
@@ -20,10 +24,25 @@ type Screen =
   | { readonly name: 'result'; readonly completed: CompletedMatch };
 
 export function App() {
+  const queryClient = useQueryClient();
   const [screen, setScreen] = useState<Screen>({ name: 'menu' });
   const [profile, setProfile] = useState<Profile | null>(loadProfile);
   const [lastResult, setLastResult] = useState<MatchResult | null>(loadLastResult);
   const [options, setOptions] = useState<GameOptions>(loadOptions);
+  const recordsConfigKey = useMemo(
+    () => configKey(createMatchConfig(options)),
+    [options],
+  );
+  const syncPendingSubmissions = useCallback(
+    () => void flushPendingSubmissions(queryClient),
+    [queryClient],
+  );
+
+  useEffect(() => {
+    syncPendingSubmissions();
+    window.addEventListener('online', syncPendingSubmissions);
+    return () => window.removeEventListener('online', syncPendingSubmissions);
+  }, [syncPendingSubmissions]);
 
   const play = () => {
     audio.unlock();
@@ -37,6 +56,12 @@ export function App() {
     const completed = recordCompletedMatch(result);
     setLastResult(result);
     setScreen({ name: 'result', completed });
+    if (!profile) {
+      console.error('Completed match was not submitted because the player profile is unavailable.');
+      return;
+    }
+    const submission = createMatchSubmission(profile.playerId, profile.nickname, result);
+    void queueMatchSubmission(submission, queryClient);
   };
 
   return (
@@ -71,6 +96,8 @@ export function App() {
             tab={screen.tab}
             onTabChange={(tab) => setScreen({ name: 'records', tab })}
             onBack={toMenu}
+            configKey={recordsConfigKey}
+            playerId={profile?.playerId ?? null}
           />
         );
       case 'menu':

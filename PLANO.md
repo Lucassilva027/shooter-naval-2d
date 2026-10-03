@@ -154,10 +154,10 @@ docs/
 
 #### 9. Ranking e Histórico
 
-- [ ] Contratos tipados + cliente Axios (timeout)
-- [ ] MSW (handlers, fixtures, db persistido, funciona no build)
-- [ ] TanStack Query: paginação, cache, invalidação, retries, `placeholderData`
-- [ ] Registro idempotente (ID da partida gerado no cliente) + fila de pendentes persistida
+- [x] Contratos tipados + cliente Axios (timeout)
+- [x] MSW (handlers, fixtures, db persistido, funciona no build)
+- [x] TanStack Query: paginação, cache, invalidação, retries, `placeholderData`
+- [x] Registro idempotente (ID da partida gerado no cliente) + fila de pendentes persistida
 - [ ] Respostas atrasadas não sobrescrevem dados recentes
 - [ ] UI de seleção/reset de cenários de rede
 

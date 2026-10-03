@@ -1,13 +1,17 @@
 import { expect, type Page } from '@playwright/test';
 
 /** Skips the first-match nickname dialog by storing a profile before the app loads. */
-export async function seedProfile(page: Page, nickname = 'Tester'): Promise<void> {
-  await page.addInitScript((name) => {
+export async function seedProfile(
+  page: Page,
+  nickname = 'Tester',
+  playerId = 'e2e-player',
+): Promise<void> {
+  await page.addInitScript(({ name, id }) => {
     localStorage.setItem(
       'pirate-battle:profile',
-      JSON.stringify({ playerId: 'e2e-player', nickname: name }),
+      JSON.stringify({ playerId: id, nickname: name }),
     );
-  }, nickname);
+  }, { name: nickname, id: playerId });
 }
 
 export const playButton = (page: Page) => page.getByRole('button', { name: 'Play', exact: true });

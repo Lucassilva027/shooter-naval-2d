@@ -404,8 +404,75 @@ dialog.panel::backdrop {
 .records__panel {
   min-height: 160px;
   width: 100%;
+  display: block;
+  padding: 12px 0;
+}
+
+.records__content {
   display: grid;
-  place-items: center;
+  gap: 12px;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.records__content h2 {
+  margin: 0;
+  color: var(--gold);
+  font-size: 1rem;
+}
+
+.records__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.records__table th,
+.records__table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgb(201 191 166 / 25%);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.records__table th {
+  color: var(--gold);
+}
+
+.records__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #c9bfa6;
+}
+
+.records__page-button {
+  --btn-height: 40px;
+  min-width: 120px;
+}
+
+.records__page-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.records__error {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  color: #ffc6bd;
+  text-align: center;
+}
+
+.records__error p,
+.records__stale-error {
+  margin: 0;
+}
+
+.records__stale-error {
+  color: #ffc6bd;
+  font-size: 0.85rem;
 }
 
 .how-to__rules {
