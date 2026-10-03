@@ -18,18 +18,26 @@ const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 50;
 
 export function createApiHandlers(database: MatchesDatabase = createMatchesDatabase()) {
+  const timedOutMatchIds = new Set<string>();
   return [
-    httpPostMatches(database),
+    httpPostMatches(database, timedOutMatchIds),
     httpGetRanking(database),
     httpGetHistory(database),
   ];
 }
 
-function httpPostMatches(database: MatchesDatabase) {
+function httpPostMatches(database: MatchesDatabase, timedOutMatchIds: Set<string>) {
   return http.post(`${API_ROOT}/matches`, async ({ request }) => {
     const body: unknown = await request.json();
     if (!isMatchSubmission(body)) {
       return HttpResponse.json({ message: 'Invalid match submission.' }, { status: 400 });
+    }
+    const scenario = getNetworkScenario();
+    if (scenario === 'submission-error') {
+      return HttpResponse.json(
+        { message: 'The mock match submission service is temporarily unavailable.' },
+        { status: 503 },
+      );
     }
 
     const entry: MatchHistoryEntry = {
@@ -44,6 +52,10 @@ function httpPostMatches(database: MatchesDatabase) {
       endedAt: body.result.endedAt,
     };
     const inserted = await database.add(entry);
+    if (scenario === 'submission-timeout' && !timedOutMatchIds.has(body.matchId)) {
+      timedOutMatchIds.add(body.matchId);
+      await delay(15_000);
+    }
     return HttpResponse.json(
       { matchId: body.matchId, status: inserted ? 'created' : 'already-recorded' },
       { status: inserted ? 201 : 200 },
@@ -63,6 +75,9 @@ async function applyNetworkScenario(): Promise<Response | null> {
         { message: 'The mock records service is temporarily unavailable.' },
         { status: 503 },
       );
+    case 'submission-error':
+    case 'submission-timeout':
+      return null;
   }
 }
 

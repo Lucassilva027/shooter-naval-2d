@@ -171,9 +171,9 @@ docs/
 - [x] Instrumentação: seed, relógio controlado, leitura do estado
 - [x] Options
 - [x] Partida: movimento, disparos, fim por tempo/morte, pausa
-- [ ] Ranking/histórico (vazio, erro, paginação, timeout sem duplicação, pendente após refresh)
-- [ ] Visual: menu, arena estável, resultado
-- [ ] Projetos desktop + mobile (Chromium), relatório HTML, traces em falha
+- [x] Ranking/histórico (vazio, erro, paginação, timeout sem duplicação, pendente após refresh)
+- [x] Visual: menu, arena estável, resultado
+- [x] Projetos desktop + mobile (Chromium), relatório HTML, traces em falha
 
 #### 12. Deploy final na Vercel
 
