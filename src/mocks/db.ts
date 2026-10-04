@@ -2,13 +2,16 @@ import type { MatchHistoryEntry } from '@/api/contracts';
 import { matchFixtures } from './fixtures/matches';
 
 const DATABASE_NAME = 'pirate-battle-api';
-const DATABASE_VERSION = 1;
+/** Bumped whenever the fixtures change, so existing browsers pick up the new ones. */
+const DATABASE_VERSION = 2;
 const MATCHES_STORE = 'matches';
 
 export interface MatchesDatabase {
   get(matchId: string): Promise<MatchHistoryEntry | undefined>;
   getAll(): Promise<MatchHistoryEntry[]>;
   add(entry: MatchHistoryEntry): Promise<boolean>;
+  /** Drops every recorded match and restores the fixtures. */
+  reset(): Promise<void>;
 }
 
 export function createMatchesDatabase(name = DATABASE_NAME): MatchesDatabase {
@@ -24,8 +27,10 @@ export function createMatchesDatabase(name = DATABASE_NAME): MatchesDatabase {
 
       request.onupgradeneeded = () => {
         const database = request.result;
-        const store = database.createObjectStore(MATCHES_STORE, { keyPath: 'matchId' });
-        for (const fixture of matchFixtures) store.add(fixture);
+        const store = database.objectStoreNames.contains(MATCHES_STORE)
+          ? request.transaction?.objectStore(MATCHES_STORE)
+          : database.createObjectStore(MATCHES_STORE, { keyPath: 'matchId' });
+        for (const fixture of matchFixtures) store?.put(fixture);
       };
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error ?? new Error('Failed to open the mock API database.'));
@@ -63,6 +68,18 @@ export function createMatchesDatabase(name = DATABASE_NAME): MatchesDatabase {
         transaction.oncomplete = () => resolve(inserted);
         transaction.onabort = () =>
           reject(transaction.error ?? new Error('Failed to write to the mock API database.'));
+      });
+    },
+    async reset() {
+      const database = await openDatabase();
+      const transaction = database.transaction(MATCHES_STORE, 'readwrite');
+      const store = transaction.objectStore(MATCHES_STORE);
+      store.clear();
+      for (const fixture of matchFixtures) store.add(fixture);
+      return new Promise<void>((resolve, reject) => {
+        transaction.oncomplete = () => resolve();
+        transaction.onabort = () =>
+          reject(transaction.error ?? new Error('Failed to reset the mock API database.'));
       });
     },
   };

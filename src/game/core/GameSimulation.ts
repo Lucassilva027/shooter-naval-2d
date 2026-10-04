@@ -2,12 +2,13 @@ import type { EnemyKind, GameConfig, ProjectileConfig } from '@/config/gameConfi
 import type { InputSnapshot } from '../input/actions';
 import { createEnemy, type Enemy } from '../entities/enemy';
 import { placeIslands, selectIslandLayout, type Island } from '../entities/island';
-import { createProjectile, type Projectile } from '../entities/projectile';
+import { createProjectile, type Faction, type Projectile } from '../entities/projectile';
 import { createShip, hullBoundingRadius, rememberPreviousState, type Ship } from '../entities/ship';
 import {
   confineToArena,
   resolveShipVsIsland,
   separateShips,
+  shipNearIsland,
   shipsOverlap,
 } from '../systems/collision';
 import { chaserControls, shooterCanFire, shooterControls } from '../systems/enemyAi';
@@ -18,6 +19,7 @@ import {
   broadsideShots,
   createCooldown,
   frontShot,
+  isCooldownReady,
   tickCooldown,
   type ShotRequest,
 } from '../systems/weapons';
@@ -26,9 +28,23 @@ import { createRandom, type Random } from './random';
 import type { Size } from './worldSize';
 
 const STATIC_RESOLVE_PASSES = 3;
+/** World units of clearance a hull needs from a rock before touching it again counts as a new impact. */
+const ROCK_CONTACT_MARGIN = 12;
 const PLAYER_ID = 0;
 /** Absorbs floating-point drift from summing thousands of fixed steps. */
 const TIME_EPSILON = 1e-6;
+
+export interface MatchStats {
+  readonly shotsFired: Record<Faction, number>;
+  /** Every spawn, with the simulated time at which the enemy appeared. */
+  readonly spawns: {
+    readonly kind: EnemyKind;
+    readonly atSeconds: number;
+    readonly distanceFromPlayer: number;
+  }[];
+  peakEnemies: number;
+  peakProjectiles: number;
+}
 
 /**
  * Owns all continuous match state and advances it by fixed steps. Has no knowledge of
@@ -45,6 +61,13 @@ export class GameSimulation {
   elapsedSeconds = 0;
   /** Set once the match ends; from then on `step` is a no-op and the score is final. */
   outcome: MatchOutcome | null = null;
+  /** Running totals for instrumentation and profiling; never read by the rules. */
+  readonly stats: MatchStats = {
+    shotsFired: { player: 0, enemy: 0 },
+    spawns: [],
+    peakEnemies: 0,
+    peakProjectiles: 0,
+  };
 
   private readonly random: Random;
   private readonly events: GameEvent[] = [];
@@ -95,6 +118,16 @@ export class GameSimulation {
     };
   }
 
+  /** Whether each player weapon can fire on the next step. */
+  get weaponsReady(): { readonly front: boolean; readonly left: boolean; readonly right: boolean } {
+    const { front, left, right } = this.playerCooldowns;
+    return {
+      front: isCooldownReady(front),
+      left: isCooldownReady(left),
+      right: isCooldownReady(right),
+    };
+  }
+
   get remainingSeconds(): number {
     return Math.max(0, this.config.match.durationSeconds - this.elapsedSeconds);
   }
@@ -122,6 +155,8 @@ export class GameSimulation {
     this.firePlayerWeapons(input, dt);
     this.fireEnemyWeapons(dt);
     this.spawnEnemies(dt);
+    this.stats.peakEnemies = Math.max(this.stats.peakEnemies, this.enemies.length);
+    this.stats.peakProjectiles = Math.max(this.stats.peakProjectiles, this.projectiles.length);
 
     this.elapsedSeconds += dt;
     if (this.remainingSeconds <= TIME_EPSILON) {
@@ -271,6 +306,11 @@ export class GameSimulation {
     const id = this.nextEntityId++;
     const config = this.enemyConfig(plan.kind);
     this.enemies.push(createEnemy(id, plan.kind, config, plan.x, plan.y, plan.rotation));
+    this.stats.spawns.push({
+      kind: plan.kind,
+      atSeconds: this.elapsedSeconds + dt,
+      distanceFromPlayer: Math.hypot(plan.x - this.player.x, plan.y - this.player.y),
+    });
     this.events.push({ type: 'enemySpawned', shipId: id, kind: plan.kind });
   }
 
@@ -290,6 +330,7 @@ export class GameSimulation {
           projectile,
         ),
       );
+      this.stats.shotsFired[shot.faction]++;
       this.events.push({ type: 'shot', ...shot });
     }
   }
@@ -316,7 +357,14 @@ export class GameSimulation {
         this.destroyEnemy(ship as Enemy, 'collision');
       }
     }
-    if (rockHits.size > 0 && ship.health > 0) this.rockContacts.set(ship, rockHits);
+
+    // Sliding along a rock can leave a hairline gap for a step; the contact only ends
+    // once the hull is clearly away from it, so one scrape costs one impact.
+    const touching = new Set(rockHits);
+    for (const rock of previousContacts ?? []) {
+      if (shipNearIsland(ship, rock, ROCK_CONTACT_MARGIN)) touching.add(rock);
+    }
+    if (touching.size > 0 && ship.health > 0) this.rockContacts.set(ship, touching);
     else this.rockContacts.delete(ship);
   }
 }

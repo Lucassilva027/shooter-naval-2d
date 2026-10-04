@@ -17,7 +17,9 @@ const SAND_TINT = 0xe8c98f;
 const PLAYER_BAR_COLOR = 0x4cd964;
 const ENEMY_BAR_COLOR = 0xff4d4d;
 const WRECK_SECONDS = 2.2;
-
+/** Camera shake when the player is hit, in world units and seconds. */
+const HIT_SHAKE = { amplitude: 6, seconds: 0.25 };
+const SINK_SHAKE = { amplitude: 12, seconds: 0.6 };
 /**
  * Read-only view of the simulation. It never mutates game state; it only mirrors it into
  * the Pixi scene graph and scales the fixed-size world to fit the canvas.
@@ -34,6 +36,12 @@ export class GameRenderer {
   private readonly effects = new EffectsLayer();
   private readonly splashRing: Texture;
   private readonly colliders: Graphics | null;
+  /** Letterboxed world position; shake offsets are applied on top of it. */
+  private readonly origin = { x: 0, y: 0 };
+  private shake = { amplitude: 0, seconds: 0, remaining: 0 };
+  private readonly reducedMotion =
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   constructor(
     private readonly app: Application,
@@ -113,7 +121,31 @@ export class GameRenderer {
     this.projectiles.sync(this.simulation.projectiles, alpha);
     this.wrecks.update(frameSeconds);
     this.effects.update(frameSeconds);
+    this.updateShake(frameSeconds);
     if (this.colliders) this.drawColliders(this.colliders);
+  }
+
+  /** A weaker shake never cuts a stronger one short. */
+  private startShake({ amplitude, seconds }: { amplitude: number; seconds: number }): void {
+    if (this.reducedMotion || amplitude < this.shakeStrength()) return;
+    this.shake = { amplitude, seconds, remaining: seconds };
+  }
+
+  private shakeStrength(): number {
+    const { amplitude, seconds, remaining } = this.shake;
+    return remaining > 0 ? amplitude * (remaining / seconds) : 0;
+  }
+
+  /** Frozen while paused (no elapsed time), so the arena stays still. */
+  private updateShake(frameSeconds: number): void {
+    if (this.shake.remaining <= 0 || frameSeconds === 0) return;
+    this.shake.remaining = Math.max(0, this.shake.remaining - frameSeconds);
+    const strength = this.shakeStrength();
+    const scale = this.world.scale.x;
+    this.world.position.set(
+      this.origin.x + (Math.random() * 2 - 1) * strength * scale,
+      this.origin.y + (Math.random() * 2 - 1) * strength * scale,
+    );
   }
 
   /** Sprites currently in the scene, for performance instrumentation. */
@@ -185,8 +217,10 @@ export class GameRenderer {
 
     this.spawnDebris(x, y, 2, 60);
 
-    if (shipId === this.simulation.player.id) this.playerView.flash();
-    else if (shipId !== undefined) this.enemyViews.get(shipId)?.flash();
+    if (shipId === this.simulation.player.id) {
+      this.playerView.flash();
+      this.startShake(HIT_SHAKE);
+    } else if (shipId !== undefined) this.enemyViews.get(shipId)?.flash();
   }
 
   private addEnemyView(id: number, kind: EnemyKind): void {
@@ -207,6 +241,7 @@ export class GameRenderer {
       view.destroy();
     } else if (event.shipId === this.simulation.player.id) {
       this.playerView.container.visible = false;
+      this.startShake(SINK_SHAKE);
     }
 
     const skin = event.kind ?? 'player';
@@ -276,6 +311,8 @@ export class GameRenderer {
     const { width, height } = this.simulation.arena;
     const scale = Math.min(screenWidth / width, screenHeight / height);
     this.world.scale.set(scale);
-    this.world.position.set((screenWidth - width * scale) / 2, (screenHeight - height * scale) / 2);
+    this.origin.x = (screenWidth - width * scale) / 2;
+    this.origin.y = (screenHeight - height * scale) / 2;
+    this.world.position.set(this.origin.x, this.origin.y);
   };
 }

@@ -53,13 +53,34 @@ export function createMatchSubmission(
   };
 }
 
+const listeners = new Set<() => void>();
+
+/** Notifies on queue changes from this tab and from other tabs. */
+export function subscribePendingSubmissions(listener: () => void): () => void {
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === STORAGE_KEY || event.key === null) listener();
+  };
+  listeners.add(listener);
+  window.addEventListener('storage', onStorage);
+  return () => {
+    listeners.delete(listener);
+    window.removeEventListener('storage', onStorage);
+  };
+}
+
+export function countPendingSubmissions(): number {
+  const stored = readPendingSubmissions();
+  return stored.ok ? stored.submissions.length : 0;
+}
+
 function writePendingSubmissions(submissions: readonly MatchSubmission[]): boolean {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(submissions));
-    return true;
   } catch {
     return false;
   }
+  for (const listener of listeners) listener();
+  return true;
 }
 
 function isMatchSubmission(value: unknown): value is MatchSubmission {

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { leaveMatch, playButton, seedProfile, startMatch } from './helpers';
 
 test.describe('asset loading', () => {
@@ -7,7 +7,11 @@ test.describe('asset loading', () => {
   });
 
   test.describe('failed asset request', () => {
-    test.use({ serviceWorkers: 'block' });
+    // Blocking service workers lets `page.route` see asset requests, so the mock API is off.
+    test.use({
+      serviceWorkers: 'block',
+      allowedConsoleErrors: [/Failed to start the mock API worker/],
+    });
 
     test('shows an accessible error and recovers on retry', async ({ page }) => {
       await page.route('**/assets/png/**/tile_73.png', (route) => route.abort('failed'));
@@ -30,12 +34,6 @@ test.describe('asset loading', () => {
   });
 
   test('mounts a single canvas across repeated enter/exit cycles', async ({ page }) => {
-    const errors: string[] = [];
-    page.on('pageerror', (error) => errors.push(error.message));
-    page.on('console', (message) => {
-      if (message.type() === 'error') errors.push(message.text());
-    });
-
     await page.goto('/');
     for (let i = 0; i < 5; i++) {
       await startMatch(page);
@@ -43,6 +41,5 @@ test.describe('asset loading', () => {
       await leaveMatch(page);
       await expect(page.locator('canvas')).toHaveCount(0);
     }
-    expect(errors).toEqual([]);
   });
 });

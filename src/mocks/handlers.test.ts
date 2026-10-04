@@ -22,7 +22,13 @@ class MemoryMatchesDatabase {
     this.entries.push(entry);
     return true;
   }
+
+  async reset(): Promise<void> {
+    this.entries = [...matchFixtures];
+  }
 }
+
+const DEFAULT_KEY = 'd120-s4';
 
 describe('mock match API', () => {
   const database = new MemoryMatchesDatabase();
@@ -84,7 +90,8 @@ describe('mock match API', () => {
     const page = await response.json();
 
     expect(response.status).toBe(200);
-    expect(page).toMatchObject({ page: 2, pageSize: 1, total: 4, totalPages: 4 });
+    expect(key).toBe(DEFAULT_KEY);
+    expect(page).toMatchObject({ page: 2, pageSize: 1, total: 14, totalPages: 14 });
     expect(page.items).toHaveLength(1);
     expect(page.items[0]).toMatchObject({
       matchId: 'fixture-match-002',
@@ -100,8 +107,8 @@ describe('mock match API', () => {
     const page = await response.json();
 
     expect(response.status).toBe(200);
-    expect(page).toMatchObject({ page: 1, pageSize: 1, total: 3, totalPages: 3 });
-    expect(page.items[0]).toMatchObject({ matchId: 'fixture-match-005' });
+    expect(page).toMatchObject({ page: 1, pageSize: 1, total: 7, totalPages: 7 });
+    expect(page.items[0]).toMatchObject({ matchId: 'fixture-match-019' });
   });
 
   it('rejects malformed submissions and invalid pagination', async () => {
@@ -134,4 +141,73 @@ describe('mock match API', () => {
     );
     expect(recoveredResponse.status).toBe(200);
   });
+
+  it('returns empty pages and generated extra pages on demand', async () => {
+    setNetworkScenario('empty');
+    const empty = await (await fetch(rankingUrl(1, 5))).json();
+    expect(empty).toMatchObject({ items: [], total: 0, totalPages: 0 });
+
+    setNetworkScenario('many-pages');
+    const many = await (await fetch(rankingUrl(3, 10))).json();
+    expect(many).toMatchObject({ page: 3, total: 74, totalPages: 8 });
+    expect(many.items).toHaveLength(10);
+    const history = await (
+      await fetch('http://localhost/api/history?playerId=fixture-player-ada&page=1&pageSize=5')
+    ).json();
+    expect(history).toMatchObject({ total: 67, totalPages: 14 });
+  });
+
+  it('fails only the endpoint selected by the ranking and history error scenarios', async () => {
+    const historyUrl = 'http://localhost/api/history?playerId=fixture-player-ada&page=1&pageSize=5';
+    setNetworkScenario('ranking-error');
+    expect((await fetch(rankingUrl(1, 5))).status).toBe(500);
+    expect((await fetch(historyUrl)).status).toBe(200);
+
+    setNetworkScenario('history-error');
+    expect((await fetch(rankingUrl(1, 5))).status).toBe(200);
+    expect((await fetch(historyUrl)).status).toBe(500);
+
+    setNetworkScenario('client-error');
+    expect((await fetch(rankingUrl(1, 5))).status).toBe(429);
+  });
+
+  it('fails every request with a network error during a connection failure', async () => {
+    setNetworkScenario('connection-failure');
+    await expect(fetch(rankingUrl(1, 5))).rejects.toThrow();
+    await expect(
+      fetch('http://localhost/api/matches', { method: 'POST', body: '{}' }),
+    ).rejects.toThrow();
+  });
+
+  it('answers earlier requests later in the out-of-order scenario', async () => {
+    setNetworkScenario('out-of-order');
+    const finished: number[] = [];
+    await Promise.all(
+      [1, 2, 3].map((page) => fetch(rankingUrl(page, 5)).then(() => finished.push(page))),
+    );
+    expect(finished).toEqual([3, 2, 1]);
+  }, 10_000);
+
+  it('reproduces the same variable latency for the same scenario seed', async () => {
+    const { nextRecordsDelayMs } = await import('./scenarios/network');
+    setNetworkScenario('variable-latency', 42);
+    const first = [nextRecordsDelayMs(), nextRecordsDelayMs(), nextRecordsDelayMs()];
+    setNetworkScenario('variable-latency', 42);
+    const second = [nextRecordsDelayMs(), nextRecordsDelayMs(), nextRecordsDelayMs()];
+    expect(second).toEqual(first);
+    expect(first.every((delay) => delay >= 100 && delay <= 2_500)).toBe(true);
+  });
+
+  it('restores the fixtures when the mock data is reset', async () => {
+    const fixture = matchFixtures[0];
+    if (!fixture) throw new Error('Expected a match fixture.');
+    database.entries.push({ ...fixture, matchId: 'extra-match' });
+    const response = await fetch('http://localhost/api/__mock/reset', { method: 'POST' });
+    expect(response.status).toBe(204);
+    expect(database.entries).toHaveLength(matchFixtures.length);
+  });
 });
+
+function rankingUrl(page: number, pageSize: number): string {
+  return `http://localhost/api/ranking?configKey=${DEFAULT_KEY}&page=${page}&pageSize=${pageSize}`;
+}

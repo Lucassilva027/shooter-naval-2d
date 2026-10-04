@@ -19,6 +19,10 @@ export interface GameUiState {
   readonly health: number;
   readonly maxHealth: number;
   readonly score: number;
+  /** Cannon readiness; flips once per shot and reload, not per frame. */
+  readonly frontReady: boolean;
+  readonly leftReady: boolean;
+  readonly rightReady: boolean;
   /** Whole seconds left, rounded up (shows the full duration at the start). */
   readonly timeLeft: number;
   readonly lowTime: boolean;
@@ -35,6 +39,9 @@ export const INITIAL_GAME_UI_STATE: GameUiState = {
   health: 0,
   maxHealth: 0,
   score: 0,
+  frontReady: true,
+  leftReady: true,
+  rightReady: true,
   timeLeft: 0,
   lowTime: false,
   lowHealth: false,

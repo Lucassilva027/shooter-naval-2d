@@ -10,7 +10,7 @@ const gpuArgs =
     : [];
 
 export default defineConfig({
-  testDir: './tests',
+  testDir: './tests/e2e',
   fullyParallel: true,
   /** WebGL-heavy pages slow each other down when too many run at once. */
   workers: 2,

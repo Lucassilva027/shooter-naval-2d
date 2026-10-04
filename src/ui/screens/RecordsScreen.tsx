@@ -1,9 +1,11 @@
-import { useState, useId, useRef, type KeyboardEvent } from 'react';
+import { useEffect, useState, useId, useRef, type KeyboardEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   hasSameRecordsFilter,
   matchHistoryQueryOptions,
   rankingQueryOptions,
+  recordsQueryKeys,
+  resetMockApiData,
 } from '@/api/records';
 import {
   getNetworkScenario,
@@ -21,7 +23,7 @@ const TABS: readonly { readonly id: RecordsTab; readonly label: string }[] = [
   { id: 'ranking', label: 'Ranking' },
   { id: 'history', label: 'Match history' },
 ];
-const PAGE_SIZE = 2;
+const PAGE_SIZE = 5;
 const DATE_FORMAT = new Intl.DateTimeFormat('en-US', {
   dateStyle: 'medium',
   timeStyle: 'short',
@@ -49,12 +51,28 @@ export function RecordsScreen({
   const [rankingPage, setRankingPage] = useState(1);
   const [historyPage, setHistoryPage] = useState(1);
   const [networkScenario, setNetworkScenarioState] = useState(getNetworkScenario);
+  const [mockNotice, setMockNotice] = useState('');
   const showNetworkControls = import.meta.env.VITE_API_MOCKING !== 'false';
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => titleRef.current?.focus(), []);
 
   const changeNetworkScenario = (scenario: NetworkScenario) => {
     setNetworkScenario(scenario);
     setNetworkScenarioState(scenario);
-    void queryClient.invalidateQueries({ queryKey: ['records'] });
+    setMockNotice('');
+    void queryClient.invalidateQueries({ queryKey: recordsQueryKeys.all });
+  };
+
+  const resetMockData = async () => {
+    try {
+      await resetMockApiData();
+      setRankingPage(1);
+      setHistoryPage(1);
+      setMockNotice('Mock records restored to the initial fixtures.');
+    } catch {
+      setMockNotice('Could not reset the mock records. Select the Normal scenario and try again.');
+    }
+    await queryClient.invalidateQueries({ queryKey: recordsQueryKeys.all });
   };
 
   // Arrow keys move between tabs (roving tabindex), per the ARIA tabs pattern.
@@ -72,7 +90,9 @@ export function RecordsScreen({
   return (
     <Scene label="Records">
       <section className="panel panel--wide" aria-labelledby={`${baseId}-title`}>
-        <h1 id={`${baseId}-title`}>Records</h1>
+        <h1 id={`${baseId}-title`} ref={titleRef} className="screen-title" tabIndex={-1}>
+          Records
+        </h1>
         <div role="tablist" aria-label="Records" className="panel__row" onKeyDown={handleKeyDown}>
           {TABS.map(({ id, label }) => (
             <button
@@ -123,14 +143,25 @@ export function RecordsScreen({
                 onClick={() => {
                   resetNetworkScenario();
                   setNetworkScenarioState('normal');
-                  void queryClient.invalidateQueries({ queryKey: ['records'] });
+                  setMockNotice('');
+                  void queryClient.invalidateQueries({ queryKey: recordsQueryKeys.all });
                 }}
               >
                 Reset scenario
               </button>
+              <button
+                type="button"
+                className="btn btn--secondary records__page-button"
+                onClick={() => void resetMockData()}
+              >
+                Reset mock data
+              </button>
             </div>
             <p id={`${baseId}-network-scenario-description`} className="panel__muted">
               {NETWORK_SCENARIOS.find(({ id }) => id === networkScenario)?.description}
+            </p>
+            <p className="panel__muted" role="status">
+              {mockNotice}
             </p>
           </div>
         )}
@@ -145,6 +176,7 @@ export function RecordsScreen({
           <RankingPanel
             active={tab === 'ranking'}
             configKey={configKey}
+            playerId={playerId}
             page={rankingPage}
             onPageChange={setRankingPage}
           />
@@ -164,7 +196,7 @@ export function RecordsScreen({
           />
         </div>
 
-        <button type="button" className="btn btn--primary" onClick={onBack} autoFocus>
+        <button type="button" className="btn btn--primary" onClick={onBack}>
           Back
         </button>
       </section>
@@ -175,11 +207,13 @@ export function RecordsScreen({
 function RankingPanel({
   active,
   configKey,
+  playerId,
   page,
   onPageChange,
 }: {
   readonly active: boolean;
   readonly configKey: string;
+  readonly playerId: string | null;
   readonly page: number;
   readonly onPageChange: (page: number) => void;
 }) {
@@ -191,6 +225,7 @@ function RankingPanel({
         ? previousData
         : undefined,
   });
+  useClampPage(page, query.data?.totalPages, onPageChange);
 
   if (query.isPending) return <p className="panel__muted" role="status">Loading ranking…</p>;
   if (query.isError && !query.data) {
@@ -214,9 +249,12 @@ function RankingPanel({
         </thead>
         <tbody>
           {query.data.items.map((entry) => (
-            <tr key={entry.matchId}>
+            <tr key={entry.matchId} data-current={entry.playerId === playerId || undefined}>
               <td>{entry.rank}</td>
-              <td>{entry.nickname}</td>
+              <td>
+                {entry.nickname}
+                {entry.playerId === playerId && <span className="records__you"> (you)</span>}
+              </td>
               <td>{entry.score}</td>
               <td>{formatClock(entry.survivedSeconds)}</td>
             </tr>
@@ -253,6 +291,7 @@ function HistoryPanel({
         ? previousData
         : undefined,
   });
+  useClampPage(page, query.data?.totalPages, onPageChange);
 
   if (!playerId) return <p className="panel__muted">Play a battle to start your match history.</p>;
   if (query.isPending) return <p className="panel__muted" role="status">Loading match history…</p>;
@@ -295,6 +334,19 @@ function HistoryPanel({
       {query.isError && <p className="records__stale-error" role="status">Refresh failed. Showing saved results.</p>}
     </div>
   );
+}
+
+/** Records can shrink (reset, scenario change), leaving the current page past the end. */
+function useClampPage(
+  page: number,
+  totalPages: number | undefined,
+  onPageChange: (page: number) => void,
+) {
+  useEffect(() => {
+    if (totalPages !== undefined && page > Math.max(1, totalPages)) {
+      onPageChange(Math.max(1, totalPages));
+    }
+  }, [onPageChange, page, totalPages]);
 }
 
 function Pagination({

@@ -1,4 +1,4 @@
-import { mutationOptions, queryOptions, type QueryClient } from '@tanstack/react-query';
+import { queryOptions } from '@tanstack/react-query';
 import type {
   MatchHistoryParams,
   MatchHistoryEntry,
@@ -59,20 +59,27 @@ export async function getMatchHistory(
   return response.data;
 }
 
-export const matchSubmissionMutationOptions = (queryClient: QueryClient) =>
-  mutationOptions({
-    mutationFn: submitMatch,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: recordsQueryKeys.all }),
-  });
+/** Mock-only: restores the mock API fixtures. */
+export async function resetMockApiData(): Promise<void> {
+  await apiClient.post('/__mock/reset');
+}
+
+/**
+ * Records are always stale, so showing a tab again (or remounting the screen) refetches
+ * in the background while the cached page stays on screen.
+ */
+const RECORDS_STALE_TIME = 0;
 
 export const rankingQueryOptions = (params: RankingParams) =>
   queryOptions({
     queryKey: recordsQueryKeys.ranking(params),
     queryFn: ({ signal }) => getRanking(params, signal),
+    staleTime: RECORDS_STALE_TIME,
   });
 
 export const matchHistoryQueryOptions = (params: MatchHistoryParams) =>
   queryOptions({
     queryKey: recordsQueryKeys.history(params),
     queryFn: ({ signal }) => getMatchHistory(params, signal),
+    staleTime: RECORDS_STALE_TIME,
   });

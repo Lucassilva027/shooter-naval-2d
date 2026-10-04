@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { seedProfile, startMatch } from './helpers';
 
 const durationStepper = (page: Page) => page.getByRole('spinbutton', { name: 'Game session time' });

@@ -528,6 +528,45 @@ dialog.panel::backdrop {
   font-size: 0.85rem;
 }
 
+.records__scenario-controls {
+  flex-wrap: wrap;
+}
+
+.records__you {
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.records__table tr[data-current] td {
+  background: rgb(255 209 102 / 12%);
+}
+
+.menu__pending {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 12px;
+}
+
+.menu__pending .panel__muted {
+  margin: 0;
+}
+
+.menu__pending .btn {
+  --btn-height: 40px;
+}
+
+.screen-title:focus {
+  outline: none;
+}
+
+.screen-title:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
 .how-to__rules {
   margin: 0;
   padding-left: 1.2em;

@@ -4,7 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defaultGameConfig } from '@/config/gameConfig';
 import type { MatchSubmission } from './contracts';
 import { apiClient } from './client';
+import { matchSubmissionMutationOptions, SubmissionQueuedError } from './matchSubmission';
 import { flushPendingSubmissions, queueMatchSubmission } from './pendingSubmissions';
+import { recordsQueryKeys } from './records';
 import { server } from '@/mocks/node';
 import {
   enqueuePendingSubmission,
@@ -131,6 +133,53 @@ describe('pending match submissions', () => {
 
     expect(receivedIds).toEqual(['match-retry', 'match-retry']);
     expect(readPendingSubmissions()).toEqual({ ok: true, submissions: [] });
+  });
+
+  it('registers through the TanStack mutation and invalidates both record lists', async () => {
+    server.use(
+      http.post('*/api/matches', async ({ request }) => {
+        const body = (await request.json()) as { matchId: string };
+        return HttpResponse.json({ matchId: body.matchId, status: 'created' }, { status: 201 });
+      }),
+    );
+    const rankingKey = recordsQueryKeys.ranking({ configKey: 'd120-s4', page: 1, pageSize: 5 });
+    const historyKey = recordsQueryKeys.history({ playerId: 'player-1', page: 1, pageSize: 5 });
+    queryClient.setQueryData(rankingKey, { items: [], page: 1, pageSize: 5, total: 0, totalPages: 0 });
+    queryClient.setQueryData(historyKey, { items: [], page: 1, pageSize: 5, total: 0, totalPages: 0 });
+
+    const mutation = queryClient
+      .getMutationCache()
+      .build(queryClient, matchSubmissionMutationOptions(queryClient));
+    await expect(mutation.execute(submission('match-mutation'))).resolves.toBe('submitted');
+
+    expect(readPendingSubmissions()).toEqual({ ok: true, submissions: [] });
+    expect(queryClient.getQueryState(rankingKey)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(historyKey)?.isInvalidated).toBe(true);
+  });
+
+  it('retries a failing mutation with the same match id, then reports it as queued', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const receivedIds: string[] = [];
+    server.use(
+      http.post('*/api/matches', async ({ request }) => {
+        const body = (await request.json()) as { matchId: string };
+        receivedIds.push(body.matchId);
+        return HttpResponse.json({ message: 'Unavailable' }, { status: 503 });
+      }),
+    );
+
+    const mutation = queryClient
+      .getMutationCache()
+      .build(queryClient, matchSubmissionMutationOptions(queryClient));
+    await expect(mutation.execute(submission('match-flaky'))).rejects.toBeInstanceOf(
+      SubmissionQueuedError,
+    );
+
+    expect(receivedIds).toEqual(['match-flaky', 'match-flaky', 'match-flaky']);
+    expect(readPendingSubmissions()).toMatchObject({
+      ok: true,
+      submissions: [{ matchId: 'match-flaky' }],
+    });
   });
 
   it('preserves and sends new queue entries added while an older request is in flight', async () => {

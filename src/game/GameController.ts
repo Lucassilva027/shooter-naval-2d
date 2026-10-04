@@ -13,9 +13,17 @@ import { resolveWorldSize } from './core/worldSize';
 import { mergeInputs, type InputCommand, type InputSource } from './input/actions';
 import { KeyboardInput } from './input/KeyboardInput';
 import type { TouchInput } from './input/TouchInput';
+import type { Ship } from './entities/ship';
 import type { MatchResult } from './matchResult';
 import { GameRenderer } from './render/GameRenderer';
 import { ManualGameClock, type GameTestState } from './testing/gameTestHooks';
+
+/**
+ * Test hooks exist only in builds made with `--mode e2e` (manual clock, for Playwright) or
+ * `--mode profile` (real clock, for performance runs). `MODE` is replaced at build time,
+ * so production bundles drop the hook code entirely.
+ */
+const TEST_HOOKS_ENABLED = import.meta.env.MODE === 'e2e' || import.meta.env.MODE === 'profile';
 
 /** `?seed=123` reproduces a match exactly (used by tests); otherwise every match differs. */
 function matchSeed(params: URLSearchParams): number {
@@ -170,10 +178,7 @@ export class GameController {
     this.app = null;
     this.renderer = null;
     this.simulation = null;
-    if (
-      import.meta.env.MODE === 'e2e' &&
-      window.__PIRATE_BATTLE_TEST__?.readState === this.readTestState
-    ) {
+    if (TEST_HOOKS_ENABLED && window.__PIRATE_BATTLE_TEST__?.readState === this.readTestState) {
       delete window.__PIRATE_BATTLE_TEST__;
     }
   }
@@ -262,6 +267,9 @@ export class GameController {
       health: Math.ceil(player.health),
       maxHealth: player.maxHealth,
       score: simulation.score,
+      frontReady: simulation.weaponsReady.front,
+      leftReady: simulation.weaponsReady.left,
+      rightReady: simulation.weaponsReady.right,
       timeLeft: displayedSeconds(simulation.remainingSeconds),
       lowTime: simulation.remainingSeconds <= match.lowTimeSeconds,
       lowHealth: player.health > 0 && player.health <= player.maxHealth * match.lowHealthRatio,
@@ -312,9 +320,10 @@ export class GameController {
   };
 
   private installTestHooks(): void {
-    if (import.meta.env.MODE !== 'e2e' || !this.testClock) return;
+    if (!TEST_HOOKS_ENABLED) return;
+    const clock = this.testClock;
     window.__PIRATE_BATTLE_TEST__ = {
-      advanceTime: (milliseconds) => this.testClock?.advance(milliseconds),
+      ...(clock ? { advanceTime: (milliseconds: number) => clock.advance(milliseconds) } : {}),
       setPlayerHealth: (health) => {
         if (!Number.isFinite(health) || health <= 0) {
           throw new RangeError('Test player health must be a finite positive number.');
@@ -333,6 +342,14 @@ export class GameController {
     const simulation = this.simulation;
     if (!simulation) return null;
     const ui = this.options.store.getSnapshot();
+    const { player, stats } = simulation;
+    const shipState = (ship: Ship) => ({
+      x: ship.x,
+      y: ship.y,
+      rotation: ship.rotation,
+      speed: ship.speed,
+      health: ship.health,
+    });
     return {
       phase: ui.phase,
       paused: ui.paused,
@@ -341,15 +358,41 @@ export class GameController {
       elapsedSeconds: simulation.elapsedSeconds,
       remainingSeconds: simulation.remainingSeconds,
       score: simulation.score,
-      health: simulation.player.health,
+      health: player.health,
       outcome: simulation.outcome,
-      player: {
-        x: simulation.player.x,
-        y: simulation.player.y,
-        rotation: simulation.player.rotation,
-      },
-      enemies: simulation.enemies.map(({ kind, x, y, health }) => ({ kind, x, y, health })),
+      arena: { width: simulation.arena.width, height: simulation.arena.height },
+      islands: simulation.islands.map(({ art, colliders }) => ({
+        art,
+        colliders: colliders.map(({ x, y, radius }) => ({ x, y, radius })),
+      })),
+      playerHull: player.hull.map(({ offset, radius }) => ({
+        x: player.x + Math.cos(player.rotation) * offset,
+        y: player.y + Math.sin(player.rotation) * offset,
+        radius,
+      })),
+      player: shipState(player),
+      enemies: simulation.enemies.map((enemy) => ({
+        ...shipState(enemy),
+        id: enemy.id,
+        kind: enemy.kind,
+      })),
+      projectiles: simulation.projectiles.map(({ id, faction, x, y, vx, vy }) => ({
+        id,
+        faction,
+        x,
+        y,
+        vx,
+        vy,
+      })),
       projectileCount: simulation.projectiles.length,
+      weaponsReady: simulation.weaponsReady,
+      stats: {
+        shotsFired: { ...stats.shotsFired },
+        spawns: stats.spawns.map((spawn) => ({ ...spawn })),
+        peakEnemies: stats.peakEnemies,
+        peakProjectiles: stats.peakProjectiles,
+      },
+      sceneCounts: this.renderer?.entityCounts ?? { ships: 0, projectiles: 0, effects: 0 },
     };
   };
 }

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createAppQueryClient } from '@/app/queryClient';
 import { App } from '@/app/App';
+import { initNetworkScenario } from '@/mocks/scenarios/network';
 import '@/ui/styles/global.css';
 import '@/ui/styles/ui-kit.css';
 
@@ -11,10 +12,14 @@ const queryClient = createAppQueryClient();
 async function startApp() {
   if (import.meta.env.VITE_API_MOCKING !== 'false') {
     try {
+      initNetworkScenario(window.location.search);
       const { worker } = await import('@/mocks/browser');
       await worker.start({ onUnhandledRequest: 'bypass' });
     } catch (error) {
-      console.error('Failed to start the mock API worker; API calls will use the configured backend.', error);
+      console.error(
+        'Failed to start the mock API worker; API calls will use the configured backend.',
+        error,
+      );
     }
   }
 

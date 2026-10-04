@@ -70,6 +70,25 @@ export function shipOverlapsIsland(ship: Ship, island: Island): boolean {
   return island.colliders.some((collider) => shipOverlapsCircle(ship, collider));
 }
 
+/** True when any hull circle is within `margin` of the island's coast. */
+export function shipNearIsland(ship: Ship, island: Island, margin: number): boolean {
+  if (
+    !circlesOverlap(
+      ship.x,
+      ship.y,
+      ship.boundingRadius + margin,
+      island.x,
+      island.y,
+      island.boundingRadius,
+    )
+  ) {
+    return false;
+  }
+  return island.colliders.some((collider) =>
+    shipOverlapsCircle(ship, { ...collider, radius: collider.radius + margin }),
+  );
+}
+
 /**
  * Pushes the hull out of every island collider it overlaps and removes the part of its
  * speed that points into the coast: a head-on hit stops the ship, a glancing one lets it

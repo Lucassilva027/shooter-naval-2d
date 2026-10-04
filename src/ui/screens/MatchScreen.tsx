@@ -6,7 +6,13 @@ import { CONTROL_LEGEND } from '@/game/input/keyboardBindings';
 import { TouchInput } from '@/game/input/TouchInput';
 import type { MatchResult } from '@/game/matchResult';
 import { ConfirmDialog } from '@/ui/components/ConfirmDialog';
-import { HealthReadout, HudAnnouncements, ScoreReadout, TimerReadout } from '@/ui/components/Hud';
+import {
+  CannonReadout,
+  HealthReadout,
+  HudAnnouncements,
+  ScoreReadout,
+  TimerReadout,
+} from '@/ui/components/Hud';
 import { MuteButton } from '@/ui/components/MuteButton';
 import { TouchControls } from '@/ui/components/TouchControls';
 import './MatchScreen.css';
@@ -110,7 +116,12 @@ export function MatchScreen({ options, onExit, onFinish }: MatchScreenProps) {
         </ul>
       </aside>
 
-      {ui.phase === 'running' && !ui.paused && <TouchControls touch={touch} />}
+      {ui.phase === 'running' && !ui.paused && (
+        <TouchControls
+          touch={touch}
+          ready={{ fireFront: ui.frontReady, fireLeft: ui.leftReady, fireRight: ui.rightReady }}
+        />
+      )}
 
       {ui.phase === 'loading' && (
         <div className="match__overlay" role="status" aria-live="polite">
@@ -161,6 +172,7 @@ export function MatchScreen({ options, onExit, onFinish }: MatchScreenProps) {
           </button>
         </div>
       </header>
+      {ui.phase === 'running' && <CannonReadout ui={ui} />}
       {playing && <HudAnnouncements ui={ui} />}
 
       <dialog

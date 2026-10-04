@@ -1,3 +1,11 @@
+interface ShipState {
+  readonly x: number;
+  readonly y: number;
+  readonly rotation: number;
+  readonly speed: number;
+  readonly health: number;
+}
+
 export interface GameTestState {
   readonly phase: 'loading' | 'running' | 'ending' | 'error';
   readonly paused: boolean;
@@ -8,22 +16,42 @@ export interface GameTestState {
   readonly score: number;
   readonly health: number;
   readonly outcome: 'timeout' | 'destroyed' | null;
-  readonly player: {
+  readonly arena: { readonly width: number; readonly height: number };
+  readonly islands: readonly {
+    readonly art: string;
+    readonly colliders: readonly { readonly x: number; readonly y: number; readonly radius: number }[];
+  }[];
+  /** Hull collision circles of the player, in world coordinates. */
+  readonly playerHull: readonly { readonly x: number; readonly y: number; readonly radius: number }[];
+  readonly player: ShipState;
+  readonly enemies: readonly (ShipState & { readonly id: number; readonly kind: string })[];
+  readonly projectiles: readonly {
+    readonly id: number;
+    readonly faction: 'player' | 'enemy';
     readonly x: number;
     readonly y: number;
-    readonly rotation: number;
-  };
-  readonly enemies: readonly {
-    readonly kind: string;
-    readonly x: number;
-    readonly y: number;
-    readonly health: number;
+    readonly vx: number;
+    readonly vy: number;
   }[];
   readonly projectileCount: number;
+  readonly weaponsReady: { readonly front: boolean; readonly left: boolean; readonly right: boolean };
+  readonly stats: {
+    readonly shotsFired: { readonly player: number; readonly enemy: number };
+    readonly spawns: readonly {
+      readonly kind: string;
+      readonly atSeconds: number;
+      readonly distanceFromPlayer: number;
+    }[];
+    readonly peakEnemies: number;
+    readonly peakProjectiles: number;
+  };
+  /** Display objects currently in the Pixi scene. */
+  readonly sceneCounts: { readonly ships: number; readonly projectiles: number; readonly effects: number };
 }
 
 export interface GameTestHooks {
-  advanceTime(milliseconds: number): void;
+  /** Only in E2E mode, where the game runs on a manual clock. */
+  advanceTime?(milliseconds: number): void;
   setPlayerHealth(health: number): void;
   readState(): GameTestState | null;
 }

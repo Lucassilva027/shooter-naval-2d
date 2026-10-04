@@ -79,6 +79,54 @@
   color: #ffd166;
 }
 
+.hud__cannons {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+
+.hud__cannon {
+  padding: 4px 10px;
+  border: 1px solid rgb(244 236 216 / 35%);
+  border-radius: 8px;
+  background: rgb(8 24 36 / 80%);
+  color: #8f8673;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.hud__cannon[data-ready] {
+  border-color: #ffd166;
+  color: #ffd166;
+}
+
+/* Touch devices show reload state on the cannon buttons instead. */
+@media (pointer: coarse) {
+  .hud__cannons {
+    display: none;
+  }
+}
+
+@media (max-height: 500px) {
+  .hud__cannons {
+    bottom: 6px;
+  }
+
+  .hud__cannon {
+    padding: 2px 6px;
+    font-size: 0.65rem;
+  }
+}
+
 @keyframes hud-pulse {
   50% {
     transform: scale(1.12);

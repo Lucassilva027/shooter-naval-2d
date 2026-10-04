@@ -188,6 +188,19 @@ describe('GameSimulation with islands', () => {
     );
   });
 
+  it('counts a glancing slide around a rock as a single impact', () => {
+    const sim = new GameSimulation(rockConfig, arena);
+    const rock = reachRock(sim);
+    sim.player.y = rock.y - 26;
+
+    for (let i = 0; i < 60 * 3; i++) sim.step(1 / 60, { ...EMPTY_INPUT, forward: true });
+
+    expect(sim.player.x).toBeGreaterThan(rock.x);
+    expect(sim.player.health).toBe(
+      defaultGameConfig.player.maxHealth - rockConfig.rockImpactDamage,
+    );
+  });
+
   it('damages enemy ships on rock impact without awarding the player a point', () => {
     const sim = new GameSimulation(rockConfig, arena);
     const rock = sim.islands[0];

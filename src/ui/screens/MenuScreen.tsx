@@ -11,6 +11,9 @@ import type { RecordsTab } from './RecordsScreen';
 interface MenuScreenProps {
   readonly profile: Profile | null;
   readonly lastResult: MatchResult | null;
+  /** Completed matches stored on this device that the API has not acknowledged yet. */
+  readonly pendingSubmissions: number;
+  readonly onSendPending: () => void;
   /** Saves the nickname chosen in the first-match dialog. */
   readonly onNickname: (nickname: string) => void;
   readonly onPlay: () => void;
@@ -52,7 +55,7 @@ export function MenuScreen(props: MenuScreenProps) {
           </p>
         )}
 
-        <button type="button" className="btn btn--primary" onClick={play} autoFocus>
+        <button type="button" className="btn btn--primary" onClick={play}>
           Play
         </button>
         <button type="button" className="btn btn--primary" onClick={props.onOptions}>
@@ -68,6 +71,18 @@ export function MenuScreen(props: MenuScreenProps) {
             {formatClock(Math.floor(props.lastResult.survivedSeconds))} ·{' '}
             {outcomeLabel(props.lastResult.outcome)}
           </p>
+        )}
+        {props.pendingSubmissions > 0 && (
+          <div className="menu__pending" role="status" data-testid="pending-submissions">
+            <p className="panel__muted">
+              {props.pendingSubmissions === 1
+                ? '1 battle result is waiting to be sent.'
+                : `${props.pendingSubmissions} battle results are waiting to be sent.`}
+            </p>
+            <button type="button" className="btn btn--secondary" onClick={props.onSendPending}>
+              Send now
+            </button>
+          </div>
         )}
         <p className="panel__muted">Navigate the islands. Survive the battle.</p>
 

@@ -7,15 +7,22 @@ import type {
   PageParams,
   RankingEntry,
 } from '@/api/contracts';
+import { API_TIMEOUT_MS } from '@/api/client';
+import { createMatchConfig } from '@/config/gameConfig';
 import type { MatchOutcome } from '@/game/core/events';
 import { validateNickname } from '@/storage/profile';
 import type { MatchesDatabase } from './db';
 import { createMatchesDatabase } from './db';
-import { getNetworkScenario } from './scenarios/network';
+import { generatedMatches } from './fixtures/matches';
+import { getNetworkScenario, nextRecordsDelayMs } from './scenarios/network';
 
 const API_ROOT = '*/api';
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 50;
+/** Long enough for the Axios client to give up first. */
+const TIMEOUT_DELAY_MS = API_TIMEOUT_MS + 2_000;
+
+type RecordsEndpoint = 'ranking' | 'history';
 
 export function createApiHandlers(database: MatchesDatabase = createMatchesDatabase()) {
   const timedOutMatchIds = new Set<string>();
@@ -23,16 +30,19 @@ export function createApiHandlers(database: MatchesDatabase = createMatchesDatab
     httpPostMatches(database, timedOutMatchIds),
     httpGetRanking(database),
     httpGetHistory(database),
+    httpResetMockData(database, timedOutMatchIds),
   ];
 }
 
 function httpPostMatches(database: MatchesDatabase, timedOutMatchIds: Set<string>) {
   return http.post(`${API_ROOT}/matches`, async ({ request }) => {
+    const scenario = getNetworkScenario();
+    if (scenario === 'connection-failure') return HttpResponse.error();
+
     const body: unknown = await request.json();
     if (!isMatchSubmission(body)) {
       return HttpResponse.json({ message: 'Invalid match submission.' }, { status: 400 });
     }
-    const scenario = getNetworkScenario();
     if (scenario === 'submission-error') {
       return HttpResponse.json(
         { message: 'The mock match submission service is temporarily unavailable.' },
@@ -54,7 +64,7 @@ function httpPostMatches(database: MatchesDatabase, timedOutMatchIds: Set<string
     const inserted = await database.add(entry);
     if (scenario === 'submission-timeout' && !timedOutMatchIds.has(body.matchId)) {
       timedOutMatchIds.add(body.matchId);
-      await delay(15_000);
+      await delay(TIMEOUT_DELAY_MS);
     }
     return HttpResponse.json(
       { matchId: body.matchId, status: inserted ? 'created' : 'already-recorded' },
@@ -63,27 +73,55 @@ function httpPostMatches(database: MatchesDatabase, timedOutMatchIds: Set<string
   });
 }
 
-async function applyNetworkScenario(): Promise<Response | null> {
+/** Restores the fixtures; used by the "Reset mock data" control and by tests. */
+function httpResetMockData(database: MatchesDatabase, timedOutMatchIds: Set<string>) {
+  return http.post(`${API_ROOT}/__mock/reset`, async () => {
+    await database.reset();
+    timedOutMatchIds.clear();
+    return new HttpResponse(null, { status: 204 });
+  });
+}
+
+/** Returns a response that replaces the real one, or null to answer normally. */
+async function applyRecordsScenario(endpoint: RecordsEndpoint): Promise<Response | null> {
+  const latency = nextRecordsDelayMs();
+  if (latency > 0) await delay(latency);
+
   switch (getNetworkScenario()) {
-    case 'normal':
+    case 'records-timeout':
+      await delay(TIMEOUT_DELAY_MS);
       return null;
-    case 'slow':
-      await delay(1_500);
-      return null;
+    case 'connection-failure':
+      return HttpResponse.error();
+    case 'client-error':
+      return HttpResponse.json(
+        { message: 'Too many records requests. Try again later.' },
+        { status: 429 },
+      );
     case 'server-error':
       return HttpResponse.json(
         { message: 'The mock records service is temporarily unavailable.' },
         { status: 503 },
       );
-    case 'submission-error':
-    case 'submission-timeout':
+    case 'ranking-error':
+      return endpoint === 'ranking' ? internalError('ranking') : null;
+    case 'history-error':
+      return endpoint === 'history' ? internalError('match history') : null;
+    default:
       return null;
   }
 }
 
+function internalError(resource: string): Response {
+  return HttpResponse.json(
+    { message: `The mock ${resource} service failed unexpectedly.` },
+    { status: 500 },
+  );
+}
+
 function httpGetRanking(database: MatchesDatabase) {
   return http.get(`${API_ROOT}/ranking`, async ({ request }) => {
-    const scenarioResponse = await applyNetworkScenario();
+    const scenarioResponse = await applyRecordsScenario('ranking');
     if (scenarioResponse) return scenarioResponse;
 
     const url = new URL(request.url);
@@ -96,10 +134,15 @@ function httpGetRanking(database: MatchesDatabase) {
       );
     }
 
-    const entries = (await database.getAll())
-      .filter((entry) => configKey(entry.config) === key)
-      .sort(compareRanking);
-    const ranked: RankingEntry[] = entries.map((entry, index) => ({
+    let entries = (await database.getAll()).filter((entry) => configKey(entry.config) === key);
+    const scenario = getNetworkScenario();
+    if (scenario === 'empty') entries = [];
+    if (scenario === 'many-pages') {
+      const config = configFromKey(key);
+      if (config) entries = [...entries, ...generatedMatches({ config })];
+    }
+
+    const ranked: RankingEntry[] = entries.sort(compareRanking).map((entry, index) => ({
       rank: index + 1,
       matchId: entry.matchId,
       playerId: entry.playerId,
@@ -115,7 +158,7 @@ function httpGetRanking(database: MatchesDatabase) {
 
 function httpGetHistory(database: MatchesDatabase) {
   return http.get(`${API_ROOT}/history`, async ({ request }) => {
-    const scenarioResponse = await applyNetworkScenario();
+    const scenarioResponse = await applyRecordsScenario('history');
     if (scenarioResponse) return scenarioResponse;
 
     const url = new URL(request.url);
@@ -128,10 +171,32 @@ function httpGetHistory(database: MatchesDatabase) {
       );
     }
 
-    const entries = (await database.getAll())
-      .filter((entry) => entry.playerId === playerId)
-      .sort((a, b) => b.endedAt.localeCompare(a.endedAt) || b.matchId.localeCompare(a.matchId));
+    let entries = (await database.getAll()).filter((entry) => entry.playerId === playerId);
+    const scenario = getNetworkScenario();
+    if (scenario === 'empty') entries = [];
+    if (scenario === 'many-pages') {
+      entries = [
+        ...entries,
+        ...generatedMatches({
+          config: createMatchConfig(),
+          playerId,
+          nickname: entries[0]?.nickname ?? 'Captain',
+        }),
+      ];
+    }
+
+    entries.sort((a, b) => b.endedAt.localeCompare(a.endedAt) || b.matchId.localeCompare(a.matchId));
     return HttpResponse.json(toPage(entries, page));
+  });
+}
+
+/** Inverse of `configKey` (`d<duration>-s<spawn>`), for generated ranking entries. */
+function configFromKey(key: string) {
+  const match = /^d(\d+)-s(\d+)$/.exec(key);
+  if (!match) return null;
+  return createMatchConfig({
+    matchDurationSeconds: Number(match[1]),
+    enemySpawnSeconds: Number(match[2]),
   });
 }
 
@@ -160,6 +225,7 @@ function toPage<T>(items: readonly T[], { page, pageSize }: PageParams): Page<T>
   };
 }
 
+/** Score, then longer survival, then the earlier match, then ids: never a tie. */
 function compareRanking(a: MatchHistoryEntry, b: MatchHistoryEntry): number {
   return (
     b.score - a.score ||

@@ -1,0 +1,51 @@
+{
+  "measuredAt": "2026-10-03T23:54:18.309Z",
+  "build": "vite build --mode profile (production bundle, real game clock)",
+  "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.8010.12 Safari/537.36",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "hardwareConcurrency": 8,
+  "match": {
+    "durationSeconds": 180,
+    "wallClockSeconds": 180.142,
+    "score": 22,
+    "shotsFired": {
+      "player": 1169,
+      "enemy": 131
+    },
+    "spawns": 45
+  },
+  "frames": {
+    "count": 10808,
+    "averageFps": 60.002409423176324,
+    "meanMs": 16.665997409326422,
+    "p50Ms": 16.69999999999709,
+    "p95Ms": 16.70000000001164,
+    "p99Ms": 16.80000000000291,
+    "worstMs": 16.800000000017462,
+    "over33MsCount": 0,
+    "over50MsCount": 0
+  },
+  "entities": {
+    "samples": 180,
+    "peakEnemies": 5,
+    "meanEnemies": 1.788888888888889,
+    "peakProjectiles": 10,
+    "meanProjectiles": 3.65,
+    "peakSceneShips": 6,
+    "peakSceneProjectiles": 10,
+    "peakSceneEffects": 27,
+    "simulationPeakEnemies": 5,
+    "simulationPeakProjectiles": 12
+  },
+  "memory": {
+    "heapMinDuringMatchBytes": 9798891,
+    "heapMaxDuringMatchBytes": 14164688,
+    "heapAfterMatchGcBytes": 9288841,
+    "heapAfterEachCycleGcBytes": [9438184, 9669256, 9766704, 9915516, 9986156],
+    "heapDeltaAcrossCyclesBytes": 697315,
+    "canvasesAfterCleanup": 0
+  }
+}

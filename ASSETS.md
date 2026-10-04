@@ -18,6 +18,11 @@ submission. Their presence in the challenge repository does not establish that
 they are public domain or grant permission to use them in unrelated projects,
 public portfolio materials, or commercial games.
 
+The ship, tile and effect sprites match the file layout of Kenney's
+[Pirate Pack](https://kenney.nl/assets/pirate-pack) (2017), which Kenney
+publishes under CC0 1.0. The challenge repository itself does not state a
+license for its `assets/` directory, so this attribution is informational.
+
 No separate asset license file or individual asset-license manifest was
 identified in this project. This document records the challenge source and the
 usage restriction applied to this submission; it does not claim an independently

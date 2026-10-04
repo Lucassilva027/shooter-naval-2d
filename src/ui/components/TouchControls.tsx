@@ -4,26 +4,47 @@ import './TouchControls.css';
 
 interface TouchControlsProps {
   readonly touch: TouchInput;
+  /** Reload state per cannon, shown on its button. */
+  readonly ready: Readonly<Record<TouchButtonAction, boolean>>;
 }
 
 /**
  * On-screen stick and cannon buttons, shown only on coarse pointers. They mirror the
  * keyboard controls, which remain the accessible input; hence hidden from assistive tech.
  */
-export function TouchControls({ touch }: TouchControlsProps) {
+export function TouchControls({ touch, ready }: TouchControlsProps) {
   return (
     <div className="touch-controls" aria-hidden="true" data-testid="touch-controls">
       <Stick touch={touch} />
       <div className="touch-controls__cannons">
-        <CannonButton touch={touch} action="fireLeft" icon="fire-left" label="Port" />
-        <CannonButton touch={touch} action="fireFront" icon="fire-front" label="Fire" big />
-        <CannonButton touch={touch} action="fireRight" icon="fire-right" label="Starboard" />
+        <CannonButton
+          touch={touch}
+          ready={ready.fireLeft}
+          action="fireLeft"
+          icon="fire-left"
+          label="Port"
+        />
+        <CannonButton
+          touch={touch}
+          ready={ready.fireFront}
+          action="fireFront"
+          icon="fire-front"
+          label="Fire"
+          big
+        />
+        <CannonButton
+          touch={touch}
+          ready={ready.fireRight}
+          action="fireRight"
+          icon="fire-right"
+          label="Starboard"
+        />
       </div>
     </div>
   );
 }
 
-function Stick({ touch }: TouchControlsProps) {
+function Stick({ touch }: { readonly touch: TouchInput }) {
   const knobRef = useRef<HTMLDivElement>(null);
 
   const move = (event: PointerEvent<HTMLDivElement>) => {
@@ -69,14 +90,16 @@ function Stick({ touch }: TouchControlsProps) {
   );
 }
 
-interface CannonButtonProps extends TouchControlsProps {
+interface CannonButtonProps {
+  readonly touch: TouchInput;
+  readonly ready: boolean;
   readonly action: TouchButtonAction;
   readonly icon: string;
   readonly label: string;
   readonly big?: boolean;
 }
 
-function CannonButton({ touch, action, icon, label, big }: CannonButtonProps) {
+function CannonButton({ touch, ready, action, icon, label, big }: CannonButtonProps) {
   const set = (element: HTMLElement, pressed: boolean) => {
     touch.setButton(action, pressed);
     if (pressed) element.dataset.pressed = '';
@@ -87,6 +110,7 @@ function CannonButton({ touch, action, icon, label, big }: CannonButtonProps) {
     <div
       className={`btn-round touch-cannon${big ? ' touch-cannon--big' : ''}`}
       data-testid={`touch-${action}`}
+      data-reloading={ready ? undefined : ''}
       title={label}
       onPointerDown={(event) => {
         event.currentTarget.setPointerCapture(event.pointerId);

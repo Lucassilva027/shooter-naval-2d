@@ -54,6 +54,26 @@ export function ScoreReadout({ ui }: HudProps) {
   );
 }
 
+const CANNONS = [
+  { key: 'leftReady', label: 'Port' },
+  { key: 'frontReady', label: 'Bow' },
+  { key: 'rightReady', label: 'Starboard' },
+] as const;
+
+/** Reload state of each cannon; decorative, as firing works the same either way. */
+export function CannonReadout({ ui }: HudProps) {
+  return (
+    <ul className="hud__cannons" aria-label="Cannons" data-testid="hud-cannons">
+      {CANNONS.map(({ key, label }) => (
+        <li key={key} className="hud__cannon" data-ready={ui[key] || undefined}>
+          {label}
+          <span className="visually-hidden">{ui[key] ? ' ready' : ' reloading'}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /**
  * Values above stay readable by assistive tech, but only milestones are announced: each
  * live region's text changes only when its threshold is crossed.

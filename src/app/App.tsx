@@ -1,20 +1,21 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { GameOptions } from '@/config/gameConfig';
 import { createMatchConfig } from '@/config/gameConfig';
 import { audio } from '@/game/audio/AudioManager';
 import { configKey, type MatchResult } from '@/game/matchResult';
-import {
-  flushPendingSubmissions,
-  queueMatchSubmission,
-  type MatchSubmissionStatus,
-} from '@/api/pendingSubmissions';
+import { useMatchSubmission } from '@/api/matchSubmission';
+import { flushPendingSubmissions } from '@/api/pendingSubmissions';
 import { loadOptions, resetOptions, saveOptions } from '@/storage/options';
 import { loadProfile, saveNickname, type Profile } from '@/storage/profile';
-import { createMatchSubmission } from '@/storage/pendingSubmissions';
+import {
+  countPendingSubmissions,
+  createMatchSubmission,
+  subscribePendingSubmissions,
+} from '@/storage/pendingSubmissions';
 import { loadLastResult, recordCompletedMatch, type CompletedMatch } from '@/storage/results';
 import { RotateNotice } from '@/ui/components/RotateNotice';
-import { MatchScreen } from '@/ui/screens/MatchScreen';
+import { LazyMatchScreen } from '@/ui/screens/LazyMatchScreen';
 import { MenuScreen } from '@/ui/screens/MenuScreen';
 import { OptionsScreen } from '@/ui/screens/OptionsScreen';
 import { RecordsScreen, type RecordsTab } from '@/ui/screens/RecordsScreen';
@@ -33,8 +34,10 @@ export function App() {
   const [profile, setProfile] = useState<Profile | null>(loadProfile);
   const [lastResult, setLastResult] = useState<MatchResult | null>(loadLastResult);
   const [options, setOptions] = useState<GameOptions>(loadOptions);
-  const [submissionStatus, setSubmissionStatus] = useState<MatchSubmissionStatus | null>(null);
-  const latestSubmission = useRef<ReturnType<typeof createMatchSubmission> | null>(null);
+  const { mutation: submission, status: mutationStatus } = useMatchSubmission();
+  const [missingProfile, setMissingProfile] = useState(false);
+  const submissionStatus = missingProfile ? 'failed' : mutationStatus;
+  const pendingCount = useSyncExternalStore(subscribePendingSubmissions, countPendingSubmissions);
   const recordsConfigKey = useMemo(
     () => configKey(createMatchConfig(options)),
     [options],
@@ -43,22 +46,6 @@ export function App() {
     () => void flushPendingSubmissions(queryClient),
     [queryClient],
   );
-
-  const submitResult = (submission: ReturnType<typeof createMatchSubmission>) => {
-    void queueMatchSubmission(submission, queryClient).then(
-      (status) => {
-        if (latestSubmission.current?.matchId === submission.matchId) {
-          setSubmissionStatus(status);
-        }
-      },
-      (error: unknown) => {
-        console.error('Could not determine the completed match submission status.', error);
-        if (latestSubmission.current?.matchId === submission.matchId) {
-          setSubmissionStatus('failed');
-        }
-      },
-    );
-  };
 
   useEffect(() => {
     syncPendingSubmissions();
@@ -80,21 +67,16 @@ export function App() {
     setScreen({ name: 'result', completed });
     if (!profile) {
       console.error('Completed match was not submitted because the player profile is unavailable.');
-      latestSubmission.current = null;
-      setSubmissionStatus('failed');
+      submission.reset();
+      setMissingProfile(true);
       return;
     }
-    const submission = createMatchSubmission(profile.playerId, profile.nickname, result);
-    latestSubmission.current = submission;
-    setSubmissionStatus('sending');
-    submitResult(submission);
+    setMissingProfile(false);
+    submission.mutate(createMatchSubmission(profile.playerId, profile.nickname, result));
   };
 
   const retrySubmission = () => {
-    const submission = latestSubmission.current;
-    if (!submission) return;
-    setSubmissionStatus('sending');
-    submitResult(submission);
+    if (submission.variables) submission.mutate(submission.variables);
   };
 
   return (
@@ -108,7 +90,12 @@ export function App() {
     switch (screen.name) {
       case 'match':
         return (
-          <MatchScreen key={screen.id} options={options} onExit={toMenu} onFinish={finishMatch} />
+          <LazyMatchScreen
+            key={screen.id}
+            options={options}
+            onExit={toMenu}
+            onFinish={finishMatch}
+          />
         );
       case 'result':
         return (
@@ -146,6 +133,8 @@ export function App() {
           <MenuScreen
             profile={profile}
             lastResult={lastResult}
+            pendingSubmissions={pendingCount}
+            onSendPending={syncPendingSubmissions}
             onNickname={changeNickname}
             onPlay={play}
             onOptions={() => setScreen({ name: 'options' })}

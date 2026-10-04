@@ -13,6 +13,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
+    "test:profile": "playwright test -c playwright.profile.config.ts",
     "assets:atlas": "node scripts/convert-ships-atlas.mjs"
   },
   "license": "UNLICENSED",

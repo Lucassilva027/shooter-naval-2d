@@ -16,6 +16,10 @@ export function createCooldown(): Cooldown {
 /** Advances a cooldown and returns true when it is ready to fire. */
 export function tickCooldown(cooldown: Cooldown, dt: number): boolean {
   cooldown.remaining = Math.max(0, cooldown.remaining - dt);
+  return isCooldownReady(cooldown);
+}
+
+export function isCooldownReady(cooldown: Cooldown): boolean {
   return cooldown.remaining <= READY_EPSILON;
 }
 

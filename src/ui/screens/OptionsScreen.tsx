@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DEFAULT_OPTIONS, OPTION_LIMITS, type GameOptions } from '@/config/gameConfig';
 import type { Profile } from '@/storage/profile';
 import { MuteButton } from '@/ui/components/MuteButton';
@@ -20,6 +20,8 @@ export function OptionsScreen(props: OptionsScreenProps) {
   const { options, onOptionsChange, profile } = props;
   const [editingName, setEditingName] = useState(false);
   const [resetNotice, setResetNotice] = useState('');
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => titleRef.current?.focus(), []);
   const isDefault =
     options.matchDurationSeconds === DEFAULT_OPTIONS.matchDurationSeconds &&
     options.enemySpawnSeconds === DEFAULT_OPTIONS.enemySpawnSeconds;
@@ -32,7 +34,9 @@ export function OptionsScreen(props: OptionsScreenProps) {
   return (
     <Scene label="Options">
       <section className="panel" aria-labelledby="options-title">
-        <h1 id="options-title">Options</h1>
+        <h1 id="options-title" ref={titleRef} className="screen-title" tabIndex={-1}>
+          Options
+        </h1>
 
         <Stepper
           label="Game session time"
@@ -87,7 +91,7 @@ export function OptionsScreen(props: OptionsScreenProps) {
           {resetNotice}
         </p>
 
-        <button type="button" className="btn btn--primary" onClick={props.onBack} autoFocus>
+        <button type="button" className="btn btn--primary" onClick={props.onBack}>
           Main Menu
         </button>
       </section>
