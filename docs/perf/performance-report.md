@@ -92,8 +92,9 @@ project avoids so that each match starts and ends with a clean lifecycle.
 
 ## Limitations
 
-- One desktop machine with headless Chromium. Physical low-end Android devices
-  were not profiled.
+- Desktop results are from one headless Chromium machine. One physical Android
+  phone was also profiled once; it is not a representative sample of Android
+  devices, and a low-end phone was not tested.
 - `performance.memory` measures the JavaScript heap, not GPU memory or all
   native browser memory. Shared textures stay in the PixiJS asset cache by
   design.
@@ -101,3 +102,93 @@ project avoids so that each match starts and ends with a clean lifecycle.
   shows the target is met but not how much headroom remains.
 - The simulation-only stress check (`src/game/core/performanceProfile.test.ts`)
   runs 180 simulated seconds in about 0.1 s of CPU time; it excludes rendering.
+
+## Physical Android profile
+
+One physical-device run was recorded on 2026-10-04. The full raw result is in
+[`performance-profile-physical-android.json`](./performance-profile-physical-android.json).
+The phone was an ASUS device (model `ASUS_I006D`) running Android 13, with
+Chrome 154, in landscape at 831 × 312 CSS pixels and device pixel ratio 2.75.
+The optimized `profile` build ran over the local Wi-Fi network. The match used
+the real game clock, a 180-second duration and the default four-second spawn
+interval. The read-only test hook kept the player alive; keyboard events were
+automated through remote DevTools to sustain movement and firing.
+
+| Measurement | Result |
+| --- | ---: |
+| Active match time / wall-clock time | 180 s / 181.8 s |
+| Frames recorded | 10,765 |
+| Average frame rate | 59.8 FPS |
+| Mean / median frame interval | 16.72 ms / 16.70 ms |
+| 95th / 99th-percentile frame interval | 16.80 ms / 16.90 ms |
+| Worst frame interval | 33.50 ms |
+| Frames over 33 ms / 50 ms | 2 / 0 |
+| Enemies sunk / shots fired (player / enemies) | 25 / 1,170 / 124 |
+| Enemy spawns | 45 |
+| Peak enemies / projectiles | 4 / 8 |
+| Peak scene ships / projectiles / effects | 5 / 8 / 30 |
+| Sampled JS heap (min / max) | 13.4 MB / 13.4 MB |
+| Canvas elements after match | 0 |
+
+No focus-loss pauses occurred during this run. The two frames over 33 ms are
+isolated long frames; the measured average is close to, but below, the 60 FPS
+target. The heap readings are live samples without forced garbage collection
+and do not establish post-match memory retention.
+
+This is a single-device, single-run measurement, not a low-end Android
+benchmark. It drove controls with synthetic keyboard events, not human touch,
+and did not measure touch latency, GPU memory, battery or thermal effects.
+Repeat the run after a fresh page load if a second sample is available, and
+record any run separately rather than averaging away slow results. A manual
+touch-control test on the same phone remains useful for usability but is not a
+substitute for another performance sample.
+
+### Mobile viewport emulation (not a physical-device result)
+
+The supplementary Playwright run was measured on 2026-10-04 with
+`npm run test:profile:mobile`. It executed the same three-minute match in
+Playwright Chromium using the Pixel 7 landscape viewport, device scale factor
+and touch emulation. The raw output is in
+[`performance-profile-mobile-emulated.json`](./performance-profile-mobile-emulated.json)
+so it cannot overwrite the desktop profile. Rendering and performance still
+come from this computer's CPU, GPU, operating system and browser build; this
+does not validate Android hardware, Chrome on Android, battery/thermal effects,
+or real touch latency.
+
+| Measurement | Result |
+| --- | ---: |
+| Emulated viewport | 863 × 360 (Pixel 7 landscape) |
+| Active match time / wall-clock time | 180 s / 180.3 s |
+| Frames recorded | 10,809 |
+| Average frame rate | 59.95 FPS |
+| Mean / median frame interval | 16.68 ms / 16.70 ms |
+| 95th / 99th-percentile frame interval | 16.70 ms / 16.80 ms |
+| Worst frame interval | 83.30 ms |
+| Frames over 33 ms / 50 ms | 2 / 1 |
+| Heap during match (min / max) | 10.11 MB / 13.28 MB |
+| Heap growth over five cleanup cycles | 0.69 MB |
+| Canvas elements after cleanup | 0 |
+
+The run confirms the game and cleanup flow work in the emulated mobile
+viewport. The long-frame samples mean the profile does not demonstrate a
+consistent 60 FPS, and the desktop host prevents drawing conclusions about
+real-phone performance.
+
+To repeat the physical-device run, build and serve the instrumented production
+bundle from the development machine:
+
+```sh
+npx vite build --mode profile --outDir dist-profile
+npx vite preview --outDir dist-profile --host 0.0.0.0
+adb forward tcp:9222 localabstract:chrome_devtools_remote
+```
+
+Open the LAN URL printed by Vite in Chrome on the phone, keep Chrome in the
+foreground and the device in landscape, then inspect its tab from desktop Chrome
+at `chrome://inspect/#devices`. The `profile` mode keeps the read-only test
+hooks and real game clock; it is for measurement only and is not the normal
+production build. The existing Playwright profiles cannot substitute for this
+run because they do not use the phone's rendering hardware. Save another
+physical-device result separately from
+[`performance-profile.json`](./performance-profile.json) and
+[`performance-profile-mobile-emulated.json`](./performance-profile-mobile-emulated.json).

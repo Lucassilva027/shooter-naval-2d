@@ -13,7 +13,10 @@ import {
 const MATCH_SECONDS = 180;
 const CLEANUP_CYCLES = 5;
 const CYCLE_PLAY_MS = 5_000;
-const RESULT_FILE = 'docs/perf/performance-profile.json';
+const RESULT_FILES: Record<string, string> = {
+  'desktop-chromium': 'docs/perf/performance-profile.json',
+  'mobile-emulated': 'docs/perf/performance-profile-mobile-emulated.json',
+};
 
 interface EntitySample {
   readonly atSeconds: number;
@@ -41,7 +44,7 @@ const usedHeap = () =>
   (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ??
   null;
 
-test('three-minute real-clock match, then five cleanup cycles', async ({ page }) => {
+test('three-minute real-clock match, then five cleanup cycles', async ({ page }, testInfo) => {
   await seedProfile(page, 'Profiler', 'profile-player');
   await seedGameOptions(page, { matchDurationSeconds: MATCH_SECONDS, enemySpawnSeconds: 4 });
   await page.addInitScript(() => {
@@ -157,6 +160,8 @@ test('three-minute real-clock match, then five cleanup cycles', async ({ page })
 
   const report = {
     measuredAt: new Date().toISOString(),
+    project: testInfo.project.name,
+    deviceEmulation: testInfo.project.name === 'mobile-emulated',
     build: 'vite build --mode profile (production bundle, real game clock)',
     browser: await page.evaluate(() => navigator.userAgent),
     viewport: page.viewportSize(),
@@ -204,7 +209,9 @@ test('three-minute real-clock match, then five cleanup cycles', async ({ page })
 
   console.log(`PERFORMANCE_PROFILE=${JSON.stringify(report)}`);
   mkdirSync('docs/perf', { recursive: true });
-  writeFileSync(RESULT_FILE, `${JSON.stringify(report, null, 2)}\n`);
+  const resultFile = RESULT_FILES[testInfo.project.name];
+  if (!resultFile) throw new Error(`No performance report path for project "${testInfo.project.name}".`);
+  writeFileSync(resultFile, `${JSON.stringify(report, null, 2)}\n`);
 
   expect(report.memory.canvasesAfterCleanup).toBe(0);
   expect(report.entities.peakSceneShips).toBeLessThanOrEqual(1 + finalState.stats.peakEnemies);

@@ -1,0 +1,59 @@
+{
+  "measuredAt": "2026-10-04T03:14:53.928Z",
+  "device": {
+    "manufacturer": "ASUS",
+    "model": "ASUS_I006D",
+    "androidVersion": "13"
+  },
+  "browser": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36",
+  "viewport": {
+    "width": 831,
+    "height": 312,
+    "dpr": 2.75
+  },
+  "hardwareConcurrency": 8,
+  "method": "Physical Android Chrome in foreground over wireless ADB DevTools; landscape; automated keyboard events; production profile build and real game clock.",
+  "match": {
+    "durationSeconds": 180,
+    "outcome": "timeout",
+    "score": 25,
+    "spawns": 45,
+    "shotsFired": {
+      "player": 1170,
+      "enemy": 124
+    },
+    "wallClockSeconds": 181.752,
+    "frames": {
+      "count": 10765,
+      "averageFps": 59.804392692372076,
+      "meanMs": 16.72117974918501,
+      "p50Ms": 16.700000000000728,
+      "p95Ms": 16.80000000000291,
+      "p99Ms": 16.89999999999418,
+      "worstMs": 33.5,
+      "over33MsCount": 2,
+      "over50MsCount": 0
+    },
+    "entities": {
+      "samples": 180,
+      "peakEnemies": 4,
+      "meanEnemies": 2.1222222222222222,
+      "peakProjectiles": 8,
+      "meanProjectiles": 2.988888888888889,
+      "peakSceneShips": 5,
+      "peakSceneProjectiles": 8,
+      "peakSceneEffects": 30
+    },
+    "pausedSamples": 0,
+    "memory": {
+      "heapMinDuringMatchBytes": 13400000,
+      "heapMaxDuringMatchBytes": 13400000
+    },
+    "canvasesAfterMatch": 0
+  },
+  "limitations": [
+    "One physical phone and one measured run.",
+    "Controls were driven with synthetic keyboard events, not human touch.",
+    "Heap values are sampled without forced garbage collection."
+  ]
+}

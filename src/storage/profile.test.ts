@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { validateNickname } from './profile';
+import { describe, expect, it, vi } from 'vitest';
+import { saveNickname, validateNickname } from './profile';
 
 describe('validateNickname', () => {
   it('trims and collapses whitespace', () => {
@@ -20,5 +20,18 @@ describe('validateNickname', () => {
   it('rejects markup and symbols', () => {
     expect(validateNickname('<b>pirate</b>').ok).toBe(false);
     expect(validateNickname('pirate!').ok).toBe(false);
+  });
+
+  it('creates a UUID from secure random bytes when randomUUID is unavailable', () => {
+    const originalCrypto = globalThis.crypto;
+    vi.stubGlobal('crypto', {
+      getRandomValues: (bytes: Uint8Array) => bytes.fill(0xab),
+    });
+
+    try {
+      expect(saveNickname('Anne Bonny').playerId).toBe('abababab-abab-4bab-abab-abababababab');
+    } finally {
+      vi.stubGlobal('crypto', originalCrypto);
+    }
   });
 });

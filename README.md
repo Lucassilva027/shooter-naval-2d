@@ -126,6 +126,7 @@ once.
 | `npm run test:e2e` | Run Playwright tests on desktop and mobile Chromium |
 | `npm run test:e2e:report` | Open the latest Playwright HTML report |
 | `npm run test:profile` | Three-minute real-clock performance profile on a production build |
+| `npm run test:profile:mobile` | Three-minute profile with emulated Pixel 7 landscape viewport |
 
 The Playwright suite starts its own Vite server in E2E mode, where the game runs
 on a manual clock so gameplay tests are deterministic. Every test also fails on
@@ -141,6 +142,9 @@ The profile (`npm run test:profile`) builds with `vite build --mode profile`,
 serves it with `vite preview`, plays a full three-minute match, and writes the
 results to `docs/perf/performance-profile.json`; see
 [docs/perf/performance-report.md](./docs/perf/performance-report.md).
+`npm run test:profile:mobile` runs the same profile with Playwright's emulated
+Pixel 7 landscape viewport and writes a separate JSON report. It is not a
+substitute for measuring on a physical phone.
 
 ## Deployment
 

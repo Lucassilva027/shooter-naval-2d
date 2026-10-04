@@ -21,7 +21,10 @@ export default defineConfig({
     baseURL: `http://localhost:${PORT}`,
     launchOptions: { args: [...gpuArgs, '--enable-precise-memory-info'] },
   },
-  projects: [{ name: 'desktop-chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'desktop-chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'mobile-emulated', use: { ...devices['Pixel 7 landscape'] } },
+  ],
   webServer: {
     command: `npx vite build --mode profile --outDir dist-profile && npx vite preview --outDir dist-profile --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,

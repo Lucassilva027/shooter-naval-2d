@@ -47,5 +47,14 @@ simulation state: positions, health, projectiles, cooldowns, spawns and score.
 - A gameplay test found that sliding along a rock could count as two impacts;
   the contact rule was fixed and covered by a unit test and an E2E test.
 - Visual baselines are committed for Windows only (`*-win32.png`).
+- The visual spec passed all six desktop and mobile Chromium cases on Windows
+  on 2026-10-03. This validates the current Windows baselines, not rendering on
+  another operating system.
+- To add a baseline for another operating system, run
+  `npx playwright test tests/e2e/visual.spec.ts --update-snapshots` there, review
+  the generated `tests/e2e/visual.spec.ts-snapshots/*-<platform>.png` images,
+  then rerun `npx playwright test tests/e2e/visual.spec.ts` without the update
+  flag and commit the reviewed images. Do not copy Windows images and rename
+  them as another platform's baselines.
 - These checks do not confirm that the Vercel deployment has the latest code.
   That requires a new deploy and a check of the live URL.
